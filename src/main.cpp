@@ -64,7 +64,9 @@ void quad( int a, int b, int c, int d, int face, vector<vec3> positions, vec2 te
 
 
 void colorcube(vec3 min, vec3 range, float grid_size){
-	vec3 N(range.x/grid_size, range.y/grid_size,range.z/grid_size);
+	vec3 N(floor(range.x/grid_size + 0.5)+1,
+			floor(range.y/grid_size + 0.5)+1,
+			floor(range.z/grid_size + 0.5)+1);
 	cube_vertex.reserve(N.x * N.y * N.z);
 	vec2 texture;
 	vec4 color(0.0f, 0.0f, 0.0f, 1.0f);
@@ -94,15 +96,26 @@ class sub_base
 {
 public:
     T msg;
-    void callback(const typename T::ConstPtr& msg_sub){msg = *msg_sub;};
+    std::vector<Eigen::Vector3i> vao_data;
+    void callback(const typename T::ConstPtr& msg_sub)
+    {
+        msg = *msg_sub;
+    };
 };
+
+// void update(auto& vbo_data, int N_voxel){
+//     for(int index = 0; index < N_voxel; ++index)
+//     {
+//       vao_data.push_back(msg.data[index]);
+//     }
+// }
 
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "visualizer");
 	ros::NodeHandle nh;
-	ros::Subscriber mapProbabilitiesSub, mapRGBSub;
-	sub_base<std_msgs::Float64MultiArray> mapProbabilitiesListener;
+	ros::Subscriber mapProbSub, mapRGBSub;
+	sub_base<std_msgs::Float64MultiArray> mapProbListener;
     sub_base<std_msgs::Int16MultiArray> mapRGBListener;
 	mapRGBSub = nh.subscribe
      ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
@@ -126,33 +139,35 @@ int main(int argc, char** argv)
 		grid_size = atof(argv[4]);
 		L_x = atof(argv[5]), L_y = atof(argv[6]), L_z = atof(argv[7]);
 	}
-
-	int N = round(L_x/grid_size);
-	int N_z = 1;
+	vec3 N_dim(floor(L_x/grid_size + 0.5)+1,
+			floor(L_y/grid_size + 0.5)+1,
+			floor(L_z/grid_size + 0.5)+1);
+	// int N = round(L_x/grid_size);
+	// int N_z = 1;
 	std::vector<glm::vec3> voxel_pos;
-	voxel_pos.reserve(N_z*N*N);
-	for(int k = 0; k < N_z; ++k)
+	voxel_pos.reserve(N_dim.z*N_dim.y*N_dim.x);
+	for(int k = 0; k < N_dim.z; ++k)
 	{
-		for(int i = 0; i < N; ++i){
-			for(int j = 0; j < N; ++j)
+		for(int i = 0; i < N_dim.y; ++i){
+			for(int j = 0; j < N_dim.x; ++j)
 			{
-				voxel_pos.push_back(glm::vec3(L_y * (float)j/N + x_min, L_x * (float)i/N + y_min, k*0.5));
+				voxel_pos.push_back(glm::vec3(L_y * (float)j/N_dim.x + x_min, L_x * (float)i/N_dim.y + y_min, k*0.5));
 			}
 		}
 	}
 
 	Vertex vertex(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0,0), glm::vec3(0.0f,0.0f,1.0f));
 
-	for(int i = 0; i < N+1 ; ++i)
+	for(int i = 0; i < N_dim.x ; ++i)
 	{
 		vertex.pos.y = y_min;
-		vertex.pos.x = L_x * (float)i/N + x_min;
+		vertex.pos.x = L_x * (float)i/N_dim.x + x_min;
 		vert_vec.push_back(vertex);
 		vertex.pos.y = L_y + y_min;
 		vert_vec.push_back(vertex);
 
 		vertex.pos.x = x_min;
-		vertex.pos.y = L_y * (float)i/N + y_min;
+		vertex.pos.y = L_y * (float)i/N_dim.y + y_min;
 		vert_vec.push_back(vertex);
 		vertex.pos.x = L_x + x_min;
 		vert_vec.push_back(vertex);
@@ -190,7 +205,6 @@ int main(int argc, char** argv)
 
 	auto ray_cast  = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
 	//
-	double scale = 0.8;
 	Eigen::Vector3d ray_start(6,1,1);
 	Eigen::Vector3d ray_end(1,9,4);
 	// cout<<"ending ray: \n"<<ray_end<<endl;
@@ -207,7 +221,7 @@ int main(int argc, char** argv)
 	cout<<" size: "<<visited.size()<<endl;
 
 	Eigen::Vector3i point;
-	for(int j= 0; j< visited.size(); ++j){
+	for(unsigned int j= 0; j< visited.size(); ++j){
 
 		// cout<<typeid(visited).name()<<endl;
 		try{
@@ -242,7 +256,7 @@ int main(int argc, char** argv)
 	vector<vec4> color_RGBA;
 	color_RGBA.reserve(cube_vertex.size());
 	int N_v = cube_vertex.size();
-	for(int i = 0; i < cube_vertex.size(); ++i)
+	for(unsigned int i = 0; i < cube_vertex.size(); ++i)
 	{
 		color_RGBA.push_back(vec4((float)i/N_v,1.0 - (float)i/N_v,1.0,1.0));
 	}
@@ -290,7 +304,7 @@ int main(int argc, char** argv)
 		if(idx_update%10 == 0)
 		{
 		// for(int index = 0; index < color_RGBA.size(); ++index)
-		for(int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
+		for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
 		{
 			// cout<<"test"<<endl;
 			// cout<<visited[k]<<endl;
@@ -342,7 +356,7 @@ int main(int argc, char** argv)
 			// {
 			// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
 			// }
-			index = 36*(position[0] +  N*position[1] +  N*N*position[2]);
+			index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
 			for(int j= 0; j < 36; ++j)
 			{
 			colorMem[index + j].x = cos(10*idx_loop);
