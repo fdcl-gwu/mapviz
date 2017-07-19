@@ -71,7 +71,7 @@ void colorcube(vec3 min, vec3 range, float grid_size){
 	cube_vertex.reserve(N.x * N.y * N.z);
 	vec2 texture;
 	vec4 color(0.0f, 0.0f, 0.0f, 1.0f);
-	float scale = grid_size;
+	// float scale = grid_size;
 	vector<vec3> pos = getPosition(vec3(0,0,0), 0.2);
 	for(int i = 0; i < N.x; ++i){
 		for(int j = 0; j < N.y; ++j){
@@ -112,16 +112,14 @@ public:
     };
 };
 
-
 class sub_map:public sub_base<std_msgs::Float64MultiArray>{
 
 };
 
-
-
-bool map_flag = false;
+bool map_flag = false, mapRGB_flag = false;
 int N_x, N_y, N_z, N_total;
 std::vector<double> map_data;
+std::vector<vec3> mapRGB_data;
 
 void mapCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
 {
@@ -143,13 +141,35 @@ void mapCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
 
 }
 
+void mapRGBCallback(const std_msgs::Int16MultiArray::ConstPtr& msg)
+{
+  // ROS_INFO("I heard: [%d]", msg->layout.dim[0].size);
+  	int Ntotal = 0;
+	if(!mapRGB_flag)
+	{
+		int Nx = msg->layout.dim[0].size;
+		int Ny = msg->layout.dim[1].size;
+		int Nz = msg->layout.dim[2].size;
+		Ntotal = Nx * Ny * Nz;
+		cout<<"RGB map dimentions: "<<Nx<<"x"<<Ny<<"x"<<Nz<<endl;
+		mapRGB_data.reserve(Ntotal);
+	}
+	mapRGB_flag = true;
+	for(int i = 0; i<Ntotal; ++i)
+	{
+		mapRGB_data[i].x = (float)msg->data[i*3]/255;
+		mapRGB_data[i].y = (float)msg->data[i*3 + 1]/255;
+		mapRGB_data[i].z = (float)msg->data[i*3 + 2]/255;
+	}
+
+}
+
 // void update(auto& vbo_data, int N_voxel){
 //     for(int index = 0; index < N_voxel; ++index)
 //     {
 //       vao_data.push_back(msg.data[index]);
 //     }
 // }
-
 
 int main(int argc, char** argv)
 {
@@ -161,11 +181,16 @@ int main(int argc, char** argv)
 	// mapRGBSub = nh.subscribe
     //  ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
     mapProbSub = nh.subscribe("/map_probabilities", 10, mapCallback);
-	while(!map_flag)
+	mapRGBSub = nh.subscribe("/map_rgb", 10, mapRGBCallback);
+	cout<<"waiting for map msgs...."<<endl;
+	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
+	while(!map_flag || !mapRGB_flag)
 	{
 		ros::spinOnce();
-		cout<<"waiting for map msgs...."<<endl;
 	}
+	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
+	cout<<"size of map: "<<map_data.size()<<endl;
+
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
 	std::vector<unsigned int> idx_vec;
@@ -292,9 +317,11 @@ int main(int argc, char** argv)
 	SDL_Event e;
 	auto isRunning = true;
 	auto counter = 0.0f;
-	float z_key = 0.0;
+	float z_key = 0.0, trans_key = 0.0;
 	double idx_loop = 0;
 	int idx_update = 0;
+	unsigned int lastTime = 0, currentTime;
+	unsigned int FPS_counter = 0;
 	while(isRunning)
 	{
 		ros::spinOnce();
@@ -322,9 +349,31 @@ int main(int argc, char** argv)
 			case SDLK_DOWN:
 				z_key++;
 				break;
+			case SDLK_8:
+				z_key--;
+				break;
+			case SDLK_2:
+				z_key++;
+				break;
+			case SDLK_4:
+				cout<<"key pressed\n";
+				trans_key-=0.5;
+				break;
+			case SDLK_6:
+				trans_key+=0.5;
+				break;
 			}
 			break;
 		}
+		FPS_counter ++;
+		currentTime = SDL_GetTicks();
+		if (currentTime > lastTime + 1000)
+		{
+			cout<<"FPS :"<<FPS_counter<<endl;
+			lastTime = currentTime;
+			FPS_counter = 0;
+		}
+
 
 
 		display.Clear(0.0f, 0.0f, 0.0f, 1.0f);
@@ -340,7 +389,7 @@ int main(int argc, char** argv)
 
 		shader.Bind();
 		texture.Bind();
-		transform.GetPos()->x = 0;
+		transform.GetPos()->x = trans_key;
 		transform.GetPos()->y = 0;
 		transform.GetPos()->z = z_key/4;
 		transform.GetRot()->x = -90;
@@ -353,26 +402,26 @@ int main(int argc, char** argv)
 		cube_shader.Bind();
 		auto colorMem = cube.getColorMem();
 
-		if(idx_update%100 == 0)
+		if(idx_update%50 == 0)
 		{
 		// for(int index = 0; index < color_RGBA.size(); ++index)
-		for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
-		{
-			// cout<<"test"<<endl;
-			// cout<<visited[k]<<endl;
-
-			// index = N*N*index +  N*index +  index;
-			// index = N*N*index +  N*index +  index;
-			// color_RGBA[i].w = (sin(counter * 10)+1)/2;
-			colorMem[index].x = 0;
-			colorMem[index].y = 0;
-			colorMem[index].z = 0;//(sin(counter * 10)+1)/2;
-			// if(index%N == 0){
-			colorMem[index].w = 0;
-			// }else{
-			// 	colorMem[index].w = 0.0;
-			// }
-		}
+		// for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
+		// {
+		// 	// cout<<"test"<<endl;
+		// 	// cout<<visited[k]<<endl;
+		//
+		// 	// index = N*N*index +  N*index +  index;
+		// 	// index = N*N*index +  N*index +  index;
+		// 	// color_RGBA[i].w = (sin(counter * 10)+1)/2;
+		// 	colorMem[index].x = 0;
+		// 	colorMem[index].y = 0;
+		// 	colorMem[index].z = 0;//(sin(counter * 10)+1)/2;
+		// 	// if(index%N == 0){
+		// 	colorMem[index].w = 0;
+		// 	// }else{
+		// 	// 	colorMem[index].w = 0.0;
+		// 	// }
+		// }
 
 		// ray_start << 0,0,2.5;
 		// ray_end << 2.5*cos(idx_loop), 2.5*sin(idx_loop), 2.5 + sin(5*idx_loop);
@@ -413,9 +462,9 @@ int main(int argc, char** argv)
 			int N_vertex = 36;
 			for(int j= 0; j < N_vertex; ++j)
 			{
-			colorMem[index*N_vertex + j].x = 1;
-			colorMem[index*N_vertex + j].y = 1;//sin(10*idx_loop);
-			colorMem[index*N_vertex + j].z = 1;//map_data[index];
+			colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
+			colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
+			colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
 			if(map_data[index]<0.6){
 				colorMem[index*N_vertex + j].w = 0.0;
 			}

@@ -1,20 +1,20 @@
-#version 120
+#version 420
 
-attribute vec3 position;
-attribute vec2 texCoord;
-attribute vec3 normal;
-attribute vec4 color;
-
-varying vec2 texCoord0;
-varying vec3 normal0;
+in vec3 position;
+in vec2 texCoord;
+in vec3 normal;
+in vec4 color;
 
 uniform mat4 MVP;
 uniform mat4 Normal;
-varying vec4 color0;
+
+out vec4 color0;
+out vec3 normal0;
+out vec2 texCoord0;
 void main()
 {
  	color0 = color;
+  normal0 = (Normal * vec4(normal, 0.0)).xyz;
 	gl_Position = MVP * vec4(position, 1.0);
 	texCoord0 = texCoord;
-	normal0 = (Normal * vec4(normal, 0.0)).xyz;
 }
