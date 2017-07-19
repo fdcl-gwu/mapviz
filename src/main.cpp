@@ -64,19 +64,20 @@ void quad( int a, int b, int c, int d, int face, vector<vec3> positions, vec2 te
 
 
 void colorcube(vec3 min, vec3 range, float grid_size){
-	vec3 N(floor(range.x/grid_size + 0.5)+1,
-			floor(range.y/grid_size + 0.5)+1,
-			floor(range.z/grid_size + 0.5)+1);
+	vec3 N(floor(range.x/grid_size + 0.5),
+			floor(range.y/grid_size + 0.5),
+			floor(range.z/grid_size + 0.5));
+	cout<<"Dimentions cube List: "<<N.x<<"x"<<N.y<<"x"<<N.z<<endl;
 	cube_vertex.reserve(N.x * N.y * N.z);
 	vec2 texture;
 	vec4 color(0.0f, 0.0f, 0.0f, 1.0f);
 	float scale = grid_size;
 	vector<vec3> pos = getPosition(vec3(0,0,0), 0.2);
-	for(int i = 0; i < N.z; ++i){
+	for(int i = 0; i < N.x; ++i){
 		for(int j = 0; j < N.y; ++j){
-			for(int k = 0; k < N.x; ++k){
-			pos = getPosition(vec3(range.x * (float)k/N.x + min.x,
-				range.y * (float)j/N.y + min.y, range.z * (float)i/N.z + min.z), scale*0.7);
+			for(int k = 0; k < N.z; ++k){
+			pos = getPosition(vec3(range.x * (float)i/N.x + min.x,
+				range.y * (float)j/N.y + min.y, range.z * (float)k/N.z + min.z), grid_size);
 			color.x = (float)j/N.y;
 			color.y = (float)k/N.x;
 			quad(1,0,3,2,0, pos, texture, color); // front
@@ -96,12 +97,51 @@ class sub_base
 {
 public:
     T msg;
+	bool draw = false;
+	int N_x, N_y, N_z;
+	inline bool getDrawFlag(){return draw;};
     std::vector<Eigen::Vector3i> vao_data;
     void callback(const typename T::ConstPtr& msg_sub)
     {
+		cout<<msg.layout.dim[0].size<<endl;
         msg = *msg_sub;
+		N_x = msg.layout.dim[0].size;
+		N_y = msg.layout.dim[1].size;
+		N_z = msg.layout.dim[2].size;
+		draw = true;
     };
 };
+
+
+class sub_map:public sub_base<std_msgs::Float64MultiArray>{
+
+};
+
+
+
+bool map_flag = false;
+int N_x, N_y, N_z, N_total;
+std::vector<double> map_data;
+
+void mapCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
+{
+  // ROS_INFO("I heard: [%d]", msg->layout.dim[0].size);
+	if(!map_flag)
+	{
+		N_x = msg->layout.dim[0].size;
+		N_y = msg->layout.dim[1].size;
+		N_z = msg->layout.dim[2].size;
+		N_total = N_x * N_y * N_z;
+		cout<<"Dimentions: "<<N_x<<"x"<<N_y<<"x"<<N_z<<endl;
+		map_data.reserve(N_total);
+	}
+	map_flag = true;
+	for(int i = 0; i<N_total; ++i)
+	{
+		map_data[i] = msg->data[i];
+	}
+
+}
 
 // void update(auto& vbo_data, int N_voxel){
 //     for(int index = 0; index < N_voxel; ++index)
@@ -110,28 +150,33 @@ public:
 //     }
 // }
 
+
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "visualizer");
 	ros::NodeHandle nh;
 	ros::Subscriber mapProbSub, mapRGBSub;
-	sub_base<std_msgs::Float64MultiArray> mapProbListener;
-    sub_base<std_msgs::Int16MultiArray> mapRGBListener;
-	mapRGBSub = nh.subscribe
-     ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
-
+	sub_map mapProbListener;
+    // sub_base<std_msgs::Int16MultiArray> mapRGBListener;
+	// mapRGBSub = nh.subscribe
+    //  ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
+    mapProbSub = nh.subscribe("/map_probabilities", 10, mapCallback);
+	while(!map_flag)
+	{
+		ros::spinOnce();
+		cout<<"waiting for map msgs...."<<endl;
+	}
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
 	std::vector<unsigned int> idx_vec;
 
 	std::cout << "Have " << argc << " arguments:" << std::endl;
     for (int i = 1; i < argc; ++i) {
-        std::cout << atof(argv[i]) << std::endl;
+        std::cout << atof(argv[i]) << ", ";
     }
-
-	float x_min = -5, y_min = -5, z_min = -5;
-	float grid_size = 0.5;
-	float L_x = 10, L_y = 10, L_z = 5;
+	float grid_size = 0.075;
+	float L_x = N_x*grid_size, L_y = N_y*grid_size, L_z = N_z*grid_size;
+	float x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
 
 	if(argc==8)
 	{
@@ -139,9 +184,7 @@ int main(int argc, char** argv)
 		grid_size = atof(argv[4]);
 		L_x = atof(argv[5]), L_y = atof(argv[6]), L_z = atof(argv[7]);
 	}
-	vec3 N_dim(floor(L_x/grid_size + 0.5)+1,
-			floor(L_y/grid_size + 0.5)+1,
-			floor(L_z/grid_size + 0.5)+1);
+	vec3 N_dim(N_x,N_y,N_z);
 	// int N = round(L_x/grid_size);
 	// int N_z = 1;
 	std::vector<glm::vec3> voxel_pos;
@@ -181,62 +224,43 @@ int main(int argc, char** argv)
 		idx_vec.push_back(idx+1);
 	}
 
-
-	// int i_test = 0;
-	// for(auto position: voxel_pos)
-	// {
-	// 	vertex.pos = position + glm::vec3(L_x * (float)i_test/N + x_min, y_min, 0.0);
-	// 	vert_vec.push_back(vertex);
-	// 	vertex.pos.y = L_y + y_min;
-	// 	vert_vec.push_back(vertex);
-	//
-	// 	vertex.pos = position + glm::vec3(x_min, L_y * (float)i_test/N + x_min, 0.0);
-	// 	vert_vec.push_back(vertex);
-	// 	vertex.pos.y = L_x + x_min;
-	// 	vert_vec.push_back(vertex);
-	//
-	// 	i_test++;
-	//
-	// }
-
 	colorcube(vec3(x_min, y_min, z_min), vec3(L_x, L_y, L_z), grid_size);
-	Eigen::Vector3d pos_min;
-	pos_min << x_min, y_min, z_min;
+	// Eigen::Vector3d pos_min;
+	// pos_min << x_min, y_min, z_min;
 
-	auto ray_cast  = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
+	// auto ray_cast  = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
 	//
-	Eigen::Vector3d ray_start(6,1,1);
-	Eigen::Vector3d ray_end(1,9,4);
+	// Eigen::Vector3d ray_start(6,1,1);
+	// Eigen::Vector3d ray_end(1,9,4);
 	// cout<<"ending ray: \n"<<ray_end<<endl;
-  	ray_cast.setStartEnd(ray_start, ray_end);
+ //  	ray_cast.setStartEnd(ray_start, ray_end);
 	//
-	cout<<"ray voxel simple: "<<ray_cast.SingleRayCasting3D()<<endl;
-	// for(int index = 0 ; index < ray_cast.SingleRayCasting3D(); ++index)
-	// {
-	// 	cout<<<<endl;
+	// cout<<"ray voxel simple: "<<ray_cast.SingleRayCasting3D()<<endl;
+	// // for(int index = 0 ; index < ray_cast.SingleRayCasting3D(); ++index)
+	// // {
+	// // 	cout<<<<endl;
+	// // }
+	// cout<<"ray voxel ADD: "<<ray_cast.voxel_traversal()<<endl;
+	//
+	// auto visited = ray_cast.getVisited();
+	// cout<<" size: "<<visited.size()<<endl;
+	//
+	// Eigen::Vector3i point;
+	// for(unsigned int j= 0; j< visited.size(); ++j){
+	// 	// cout<<typeid(visited).name()<<endl;
+	// 	try{
+	// 		point = visited[j];
+	//
+	// 	// cout<<"index: "<< j << " val: " <<point[2]<<endl;
+	// 	// cout<<point<<endl;
+	// 	}
+	// 	catch(std::bad_alloc& ba)
+	// 	{
+	// 		std::cerr << "bad mem alloc "<<ba.what()<<'\n';
+	// 	}
+	// 		// int index = N*point[0] +  N*point[1] +  point[2];
+	// 		// cout<<point[0]<< " " <<point[1]<<" "<<point[2]<<" * "<<endl;
 	// }
-	cout<<"ray voxel ADD: "<<ray_cast.voxel_traversal()<<endl;
-
-	auto visited = ray_cast.getVisited();
-	cout<<" size: "<<visited.size()<<endl;
-
-	Eigen::Vector3i point;
-	for(unsigned int j= 0; j< visited.size(); ++j){
-
-		// cout<<typeid(visited).name()<<endl;
-		try{
-			point = visited[j];
-
-		// cout<<"index: "<< j << " val: " <<point[2]<<endl;
-		// cout<<point<<endl;
-	}
-	catch(std::bad_alloc& ba)
-	{
-		std::cerr << "bad mem alloc "<<ba.what()<<'\n';
-	}
-		// int index = N*point[0] +  N*point[1] +  point[2];
-		// cout<<point[0]<< " " <<point[1]<<" "<<point[2]<<" * "<<endl;
-}
 		// for(auto voxel : visited)
 		// {
 		// 	int index = voxel[0] +  N*voxel[1] +  N*N*voxel[2];
@@ -252,7 +276,8 @@ int main(int argc, char** argv)
 	Shader cube_shader("./res/cubeShader");
 	Texture texture("./res/bricks.jpg");
 	Transform transform;
-	Camera camera(glm::vec3(0.0f, 2.0f, -10.0f), 70.0f, (float)DISPLAY_WIDTH/(float)DISPLAY_HEIGHT, 0.1f, 100.0f);
+	Camera camera(glm::vec3(0.0f, 2.0f, -8.0f), 70.0f,
+		(float)DISPLAY_WIDTH/(float)DISPLAY_HEIGHT, 0.1f, 100.0f);
 	vector<vec4> color_RGBA;
 	color_RGBA.reserve(cube_vertex.size());
 	int N_v = cube_vertex.size();
@@ -260,21 +285,47 @@ int main(int argc, char** argv)
 	{
 		color_RGBA.push_back(vec4((float)i/N_v,1.0 - (float)i/N_v,1.0,1.0));
 	}
+
 	cout<<cube_vertex.size()<<'\n';
 	cout<<color_RGBA.size()<<'\n';
+
 	SDL_Event e;
 	auto isRunning = true;
 	auto counter = 0.0f;
-
+	float z_key = 0.0;
 	double idx_loop = 0;
 	int idx_update = 0;
 	while(isRunning)
 	{
+		ros::spinOnce();
 		while(SDL_PollEvent(&e))
 		{
 			if(e.type == SDL_QUIT)
 				isRunning = false;
 		}
+		SDL_PollEvent(&e);
+		switch(e.type)
+		{
+		case SDL_KEYDOWN:
+			// SDLKey keyPressed = e.key.keysym.sym;
+			switch(e.key.keysym.sym)
+			{
+			case SDLK_LEFT:
+				counter-=0.1;
+				break;
+			case SDLK_RIGHT:
+				counter+=0.1;
+				break;
+			case SDLK_UP:
+				z_key--;
+				break;
+			case SDLK_DOWN:
+				z_key++;
+				break;
+			}
+			break;
+		}
+
 
 		display.Clear(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -291,9 +342,10 @@ int main(int argc, char** argv)
 		texture.Bind();
 		transform.GetPos()->x = 0;
 		transform.GetPos()->y = 0;
+		transform.GetPos()->z = z_key/4;
 		transform.GetRot()->x = -90;
 	 	transform.GetRot()->y = 0;
-		transform.GetRot()->z = counter * 1;
+		transform.GetRot()->z = counter;
 		shader.Update(transform, camera);
 		// monkey.Draw();
 		mesh.Draw();
@@ -301,7 +353,7 @@ int main(int argc, char** argv)
 		cube_shader.Bind();
 		auto colorMem = cube.getColorMem();
 
-		if(idx_update%10 == 0)
+		if(idx_update%100 == 0)
 		{
 		// for(int index = 0; index < color_RGBA.size(); ++index)
 		for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
@@ -322,10 +374,10 @@ int main(int argc, char** argv)
 			// }
 		}
 
-		ray_start << 0,0,2.5;
-		ray_end << 2.5*cos(idx_loop), 2.5*sin(idx_loop), 2.5 + sin(5*idx_loop);
+		// ray_start << 0,0,2.5;
+		// ray_end << 2.5*cos(idx_loop), 2.5*sin(idx_loop), 2.5 + sin(5*idx_loop);
 		idx_loop += 0.022;
-		ray_cast.setStartEnd(ray_start, ray_end);
+		// ray_cast.setStartEnd(ray_start, ray_end);
 
 		// visited = ray_cast.getVisited();
 		// for(auto voxel : visited)
@@ -341,28 +393,37 @@ int main(int argc, char** argv)
 		// }
 
 
-	int N_single = ray_cast.SingleRayCasting3D();
-	auto single_ray = ray_cast.getIndices();
+	// int N_single = ray_cast.SingleRayCasting3D();
+	// auto single_ray = ray_cast.getIndices();
 
-		for(int k = 0 ; k < N_single; ++k)
+		// for(int k = 0 ; k < N_single; ++k)
+		for(int index = 0; index < N_total; ++index)
 		{
 				// cout<<single_ray[k]<<endl;
 
-			int index = single_ray[k];
+			// int index = single_ray[k];
 			// cout<<"single index: "<<index<<endl;
-			Eigen::Vector3i position = ray_cast.IndToSub(index);
+			// Eigen::Vector3i position = ray_cast.IndToSub(index);
 			// vector<int> pos_int(3);
 			// for(int j = 0; j<3; ++j)
 			// {
 			// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
 			// }
-			index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
-			for(int j= 0; j < 36; ++j)
+			// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
+			int N_vertex = 36;
+			for(int j= 0; j < N_vertex; ++j)
 			{
-			colorMem[index + j].x = cos(10*idx_loop);
-			colorMem[index + j].y = 0;//sin(10*idx_loop);
-			colorMem[index + j].z = 0;
-			colorMem[index + j].w = 1;
+			colorMem[index*N_vertex + j].x = 1;
+			colorMem[index*N_vertex + j].y = 1;//sin(10*idx_loop);
+			colorMem[index*N_vertex + j].z = 1;//map_data[index];
+			if(map_data[index]<0.6){
+				colorMem[index*N_vertex + j].w = 0.0;
+			}
+			else
+			{
+				colorMem[index*N_vertex + j].w = 1.0;
+			}
+
 			}
 		}
 	}
@@ -373,7 +434,7 @@ int main(int argc, char** argv)
 
 		display.SwapBuffers();
 		SDL_Delay(1);
-		counter += 0.01f;
+		// counter += 0.01f;
 	}
 
 	return 0;

@@ -85,7 +85,7 @@ using namespace std;
           zCellDepths.resize(numCellsZ);
           visited_voxels.reserve(maxNumCellsAlongRay);
 
-         cout<<"constructor starting: numcells: "<< this->n <<
+         cout<<"constructor starting: numcells: "<<numCellsX<<"x"<<numCellsY<<"x"<<numCellsZ<<" : "<< this->n <<
              " max cell ray:"<<maxNumCellsAlongRay<< endl;
 
      }
