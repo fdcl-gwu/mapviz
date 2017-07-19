@@ -38,10 +38,10 @@ vector<vec3> normal =
 {
 	vec3(0.0, 0.0, 1.0),
 	vec3(1.0, 0.0, 0.0),
-	vec3(0.0, -1.0, 0.0),
 	vec3(0.0, 1.0, 0.0),
-	vec3(0.0, 0.0, -1.0),
-	vec3(-1.0, 0.0, 0.0)
+	vec3(0.0, 1.0, 0.0),
+	vec3(0.0, 0.0, 1.0),
+	vec3(1.0, 0.0, 0.0)
 };
 
 std::vector<Vertex> cube_vertex;
@@ -184,31 +184,49 @@ int main(int argc, char** argv)
 	mapRGBSub = nh.subscribe("/map_rgb", 10, mapRGBCallback);
 	cout<<"waiting for map msgs...."<<endl;
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
-	while(!map_flag || !mapRGB_flag)
-	{
-		ros::spinOnce();
-	}
-	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
-	cout<<"size of map: "<<map_data.size()<<endl;
+
+	float grid_size = 0.075;
+	float L_x = N_x*grid_size, L_y = N_y*grid_size, L_z = N_z*grid_size;
+	float x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
 
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
 	std::vector<unsigned int> idx_vec;
 
-	std::cout << "Have " << argc << " arguments:" << std::endl;
-    for (int i = 1; i < argc; ++i) {
-        std::cout << atof(argv[i]) << ", ";
-    }
-	float grid_size = 0.075;
-	float L_x = N_x*grid_size, L_y = N_y*grid_size, L_z = N_z*grid_size;
-	float x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
-
+	// construct simple test case
+	bool test_flag = false;
+	if(argc==2)
+	{
+		test_flag = true;
+		cout<<"test value: "<<argv[1]<<endl;
+		grid_size = 0.1;
+		L_x = 10, L_y = 10, L_z = 5;
+		N_x = L_x/grid_size;
+		N_y = L_y/grid_size;
+		N_z = L_z/grid_size;
+		x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
+	}
+	else
+	{
+		while(!map_flag || !mapRGB_flag)
+		{
+			ros::spinOnce();
+		}
+		cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
+		cout<<"size of map: "<<map_data.size()<<endl;
+		std::cout << "Have " << argc << " arguments:" << std::endl;
+	    for (int i = 1; i < argc; ++i) {
+	        std::cout << atof(argv[i]) << ", ";
+    	}
+	}
 	if(argc==8)
 	{
 		x_min = atof(argv[1]), y_min = atof(argv[2]), z_min = atof(argv[3]);
 		grid_size = atof(argv[4]);
 		L_x = atof(argv[5]), L_y = atof(argv[6]), L_z = atof(argv[7]);
 	}
+
+
 	vec3 N_dim(N_x,N_y,N_z);
 	// int N = round(L_x/grid_size);
 	// int N_z = 1;
@@ -402,7 +420,7 @@ int main(int argc, char** argv)
 		cube_shader.Bind();
 		auto colorMem = cube.getColorMem();
 
-		if(idx_update%50 == 0)
+		if(idx_update%50 == 0 && !test_flag)
 		{
 		// for(int index = 0; index < color_RGBA.size(); ++index)
 		// for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
@@ -448,34 +466,33 @@ int main(int argc, char** argv)
 		// for(int k = 0 ; k < N_single; ++k)
 		for(int index = 0; index < N_total; ++index)
 		{
-				// cout<<single_ray[k]<<endl;
+					// cout<<single_ray[k]<<endl;
 
-			// int index = single_ray[k];
-			// cout<<"single index: "<<index<<endl;
-			// Eigen::Vector3i position = ray_cast.IndToSub(index);
-			// vector<int> pos_int(3);
-			// for(int j = 0; j<3; ++j)
-			// {
-			// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
-			// }
-			// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
-			int N_vertex = 36;
-			for(int j= 0; j < N_vertex; ++j)
-			{
-			colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
-			colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
-			colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
-			if(map_data[index]<0.6){
-				colorMem[index*N_vertex + j].w = 0.0;
-			}
-			else
-			{
-				colorMem[index*N_vertex + j].w = 1.0;
-			}
-
+				// int index = single_ray[k];
+				// cout<<"single index: "<<index<<endl;
+				// Eigen::Vector3i position = ray_cast.IndToSub(index);
+				// vector<int> pos_int(3);
+				// for(int j = 0; j<3; ++j)
+				// {
+				// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
+				// }
+				// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
+				int N_vertex = 36;
+				for(int j= 0; j < N_vertex; ++j)
+				{
+					colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
+					colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
+					colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
+					if(map_data[index]<0.6){
+						colorMem[index*N_vertex + j].w = 0.0;
+					}
+					else
+					{
+						colorMem[index*N_vertex + j].w = 1.0;
+					}
+				}
 			}
 		}
-	}
 	idx_update++;
 		cube_shader.Update(transform, camera);
 		// cube.Update_value(color_RGBA, color_RGBA.size());
