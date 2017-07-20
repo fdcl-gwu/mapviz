@@ -6,11 +6,17 @@ in vec4 color0;
 
 uniform sampler2D sampler;
 uniform vec3 lightDirection;
+float cutoff = 0.5;
 
 out vec4 gl_FragColor;
 void main()
 {
 	gl_FragColor = texture2D(sampler, texCoord0) * clamp(dot(-lightDirection, normal0), 0.0, 1.0);
-	gl_FragColor = color0 + color0 * clamp(dot(-lightDirection, normal0), 0.0, 1.0) +
+	gl_FragColor = color0 * clamp(dot(-lightDirection, normal0), 0.0, 1.0) +
 	 color0 * clamp(dot(lightDirection, normal0), 0.0, 1.0);
+	 if (gl_FragColor.a < cutoff)
+        // alpha value less than user-specified threshold?
+    {
+        discard; // yes: discard this fragment
+    }
 }

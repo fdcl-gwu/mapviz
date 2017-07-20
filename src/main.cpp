@@ -22,16 +22,16 @@ using namespace glm;
 
 vector<vec3> getPosition(vec3 pos, float voxel_size)
 {
-	float half_size = voxel_size /2;
+	float half_size = voxel_size;
 	vector<vec3> translate;
-	translate.push_back(vec3(-half_size + pos.x, -half_size + pos.y, half_size + pos.z));
-	translate.push_back(vec3(-half_size + pos.x, half_size + pos.y, half_size + pos.z));
+	translate.push_back(vec3( pos.x, pos.y, half_size + pos.z));
+	translate.push_back(vec3( pos.x, half_size + pos.y, half_size + pos.z));
 	translate.push_back(vec3(half_size + pos.x, half_size + pos.y, half_size + pos.z));
-	translate.push_back(vec3(half_size + pos.x, -half_size + pos.y, half_size + pos.z));
-	translate.push_back(vec3(-half_size + pos.x, -half_size + pos.y, -half_size + pos.z));
-	translate.push_back(vec3(-half_size + pos.x, half_size + pos.y, -half_size + pos.z));
-	translate.push_back(vec3(half_size + pos.x, half_size + pos.y, -half_size + pos.z));
-	translate.push_back(vec3(half_size + pos.x, -half_size + pos.y, -half_size + pos.z));
+	translate.push_back(vec3(half_size + pos.x, pos.y, half_size + pos.z));
+	translate.push_back(vec3( pos.x,  pos.y, pos.z));
+	translate.push_back(vec3( pos.x, half_size + pos.y, pos.z));
+	translate.push_back(vec3(half_size + pos.x, half_size + pos.y,  pos.z));
+	translate.push_back(vec3(half_size + pos.x,  pos.y,  pos.z));
 	return translate;
 };
 
@@ -78,7 +78,7 @@ void colorcube(vec3 min, vec3 range, float grid_size){
 		for(int j = 0; j < N.y; ++j){
 			for(int k = 0; k < N.z; ++k){
 			pos = getPosition(vec3(range.x * (float)i/N.x + min.x,
-				range.y * (float)j/N.y + min.y, range.z * (float)k/N.z + min.z), grid_size);
+				range.y * (float)j/N.y + min.y, range.z * (float)k/N.z + min.z), grid_size*0.9);
 			color.x = (float)j/N.y;
 			color.y = (float)k/N.x;
 			quad(1,0,3,2,0, pos, texture, color); // front
@@ -224,6 +224,7 @@ int main(int argc, char** argv)
 		L_x = N_x * grid_size;
 		L_y = N_y * grid_size;
 		L_z = N_z * grid_size;
+		N_total = N_z * N_y * N_x;
 		x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
 	}
 	if(argc==8)
@@ -233,7 +234,7 @@ int main(int argc, char** argv)
 		L_x = atof(argv[5]), L_y = atof(argv[6]), L_z = atof(argv[7]);
 	}
 
-	N_total = N_z * N_y * N_x;
+	// N_total = N_z * N_y * N_x;
 	cout<<"Voxel total count: "<<N_total<<endl;
 	float x_max = x_min + L_x;
 	float y_max = y_min + L_y;
@@ -427,7 +428,7 @@ int main(int argc, char** argv)
 
 
 
-		display.Clear(0.0f, 0.0f, 0.0f, 1.0f);
+		display.Clear(0.0f, 0.0f, 0.0f, 0.0f);
 
 		// auto sinCounter = sinf(counter);
 		// auto absSinCounter = std::abs(sinCounter);
@@ -499,6 +500,34 @@ int main(int argc, char** argv)
 		// for(int k = 0 ; k < N_single; ++k)
 		for(int index = 0; index < N_total; ++index)
 		{
+			int N_vertex = 36;
+			for(int j= 0; j < N_vertex; ++j)
+			{
+				colorMem[index*N_vertex + j].x = 0;//mapRGB_data[index].x;
+				colorMem[index*N_vertex + j].y = 0;//mapRGB_data[index].y;//sin(10*idx_loop);
+				colorMem[index*N_vertex + j].z = 0;//mapRGB_data[index].z;//map_data[index];
+				colorMem[index*N_vertex + j].w = 0.0;
+			}
+		}
+		if(test_flag == true)
+		{
+			int N_vertex = 36;
+			for(int index = 0 ; index < N_total; ++index)
+			{
+				for(int j= 0; j < N_vertex; ++j)
+				{
+					colorMem[index*N_vertex + j].x = 0;
+					colorMem[index*N_vertex + j].y = 0;//sin(10*idx_loop);
+					colorMem[index*N_vertex + j].z = 1;//map_data[index];
+					colorMem[index*N_vertex + j].w = 1;
+				}
+				index += 5;
+			}
+		}
+		else
+		{
+		for(int index = 0; index < N_total; ++index)
+		{
 			// cout<<single_ray[k]<<endl;
 			// int index = single_ray[k];
 			// cout<<"single index: "<<index<<endl;
@@ -517,31 +546,21 @@ int main(int argc, char** argv)
 					colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
 					colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
 					colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
-					colorMem[index*N_vertex + j].w = 1.0;
+					colorMem[index*N_vertex + j].w = 1;
 				}
 			}else
 			{
 				for(int j= 0; j < N_vertex; ++j)
 				{
-					colorMem[index*N_vertex + j].w = 0.0;
-				}
-			}
-		}
-		if(test_flag == true)
-		{
-			int N_vertex = 36;
-			for(int index = 0 ; index < 100; ++index)
-			{
-				for(int j= 0; j < N_vertex; ++j)
-				{
 					colorMem[index*N_vertex + j].x = 0;
-					colorMem[index*N_vertex + j].y = 0;//sin(10*idx_loop);
-					colorMem[index*N_vertex + j].z = 1;//map_data[index];
-					// colorMem[index*N_vertex + j].w = 1;
-					colorMem[index*N_vertex + j].w = 1.0;
+					colorMem[index*N_vertex + j].y = 1;//sin(10*idx_loop);
+					colorMem[index*N_vertex + j].z = 0;//map_data[index];
+					colorMem[index*N_vertex + j].w = 0;
 				}
 			}
 		}
+		}
+
 		}
 	idx_update++;
 		cube_shader.Update(transform, camera);

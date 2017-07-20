@@ -22,12 +22,12 @@ Display::Display(int width, int height, const std::string& title)
     {
 		std::cerr << "Glew failed to initialize!" << std::endl;
     }
-	glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+	// glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
+	// glEnable(GL_CULL_FACE);
+	// glCullFace(GL_FRONT);
 
 }
 
