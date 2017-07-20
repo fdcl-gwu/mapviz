@@ -186,8 +186,9 @@ int main(int argc, char** argv)
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
 
 	float grid_size = 0.075;
-	float L_x = N_x*grid_size, L_y = N_y*grid_size, L_z = N_z*grid_size;
-	float x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
+	unsigned int N_x, N_y,N_z;
+	float L_x, L_y, L_z;
+	float x_min, y_min, z_min;
 
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
@@ -480,9 +481,9 @@ int main(int argc, char** argv)
 				int N_vertex = 36;
 				for(int j= 0; j < N_vertex; ++j)
 				{
-					colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
-					colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
-					colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
+					// colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
+					// colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
+					// colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
 					if(map_data[index]<0.6){
 						colorMem[index*N_vertex + j].w = 0.0;
 					}
