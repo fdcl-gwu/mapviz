@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 in vec2 texCoord0;
 in vec3 normal0;
@@ -11,5 +11,6 @@ out vec4 gl_FragColor;
 void main()
 {
 	gl_FragColor = texture2D(sampler, texCoord0) * clamp(dot(-lightDirection, normal0), 0.0, 1.0);
-	gl_FragColor = color0;
+	gl_FragColor = color0 + color0 * clamp(dot(-lightDirection, normal0), 0.0, 1.0) +
+	 color0 * clamp(dot(lightDirection, normal0), 0.0, 1.0);
 }

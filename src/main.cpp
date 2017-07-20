@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include "SDL2/SDL.h"
 #include "display.h"
 #include "mesh.h"
@@ -70,7 +71,7 @@ void colorcube(vec3 min, vec3 range, float grid_size){
 	cout<<"Dimentions cube List: "<<N.x<<"x"<<N.y<<"x"<<N.z<<endl;
 	cube_vertex.reserve(N.x * N.y * N.z);
 	vec2 texture;
-	vec4 color(0.0f, 0.0f, 0.0f, 1.0f);
+	vec4 color(0.0f, 0.0f, 0.0f, 0.0f);
 	// float scale = grid_size;
 	vector<vec3> pos = getPosition(vec3(0,0,0), 0.2);
 	for(int i = 0; i < N.x; ++i){
@@ -129,9 +130,9 @@ void mapCallback(const std_msgs::Float64MultiArray::ConstPtr& msg)
 		N_x = msg->layout.dim[0].size;
 		N_y = msg->layout.dim[1].size;
 		N_z = msg->layout.dim[2].size;
-		N_total = N_x * N_y * N_z;
+		int Ntotal = N_x * N_y * N_z;
 		cout<<"Dimentions: "<<N_x<<"x"<<N_y<<"x"<<N_z<<endl;
-		map_data.reserve(N_total);
+		map_data.reserve(Ntotal);
 	}
 	map_flag = true;
 	for(int i = 0; i<N_total; ++i)
@@ -155,11 +156,11 @@ void mapRGBCallback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 		mapRGB_data.reserve(Ntotal);
 	}
 	mapRGB_flag = true;
-	for(int i = 0; i<Ntotal; ++i)
+	for(int i = 0; i<N_total; ++i)
 	{
-		mapRGB_data[i].x = (float)msg->data[i*3]/255;
-		mapRGB_data[i].y = (float)msg->data[i*3 + 1]/255;
-		mapRGB_data[i].z = (float)msg->data[i*3 + 2]/255;
+		mapRGB_data[i].x = (float)std::max(0, (int)msg->data[i*3])/255;
+		mapRGB_data[i].y = (float)std::max(0, (int)msg->data[i*3 + 1])/255;
+		mapRGB_data[i].z = (float)std::max(0, (int)msg->data[i*3 + 2])/255;
 	}
 
 }
@@ -186,7 +187,7 @@ int main(int argc, char** argv)
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
 
 	float grid_size = 0.075;
-	unsigned int N_x, N_y,N_z;
+	// unsigned int N_x, N_y,N_z;
 	float L_x, L_y, L_z;
 	float x_min, y_min, z_min;
 
@@ -200,12 +201,13 @@ int main(int argc, char** argv)
 	{
 		test_flag = true;
 		cout<<"test value: "<<argv[1]<<endl;
-		grid_size = 0.1;
+		grid_size = 0.5;
 		L_x = 10, L_y = 10, L_z = 5;
 		N_x = L_x/grid_size;
 		N_y = L_y/grid_size;
 		N_z = L_z/grid_size;
 		x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
+		N_total = N_z * N_y * N_x;
 	}
 	else
 	{
@@ -219,6 +221,10 @@ int main(int argc, char** argv)
 	    for (int i = 1; i < argc; ++i) {
 	        std::cout << atof(argv[i]) << ", ";
     	}
+		L_x = N_x * grid_size;
+		L_y = N_y * grid_size;
+		L_z = N_z * grid_size;
+		x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
 	}
 	if(argc==8)
 	{
@@ -227,25 +233,44 @@ int main(int argc, char** argv)
 		L_x = atof(argv[5]), L_y = atof(argv[6]), L_z = atof(argv[7]);
 	}
 
+	N_total = N_z * N_y * N_x;
+	cout<<"Voxel total count: "<<N_total<<endl;
+	float x_max = x_min + L_x;
+	float y_max = y_min + L_y;
+	float z_max = z_min + L_z;
 
 	vec3 N_dim(N_x,N_y,N_z);
 	// int N = round(L_x/grid_size);
 	// int N_z = 1;
-	std::vector<glm::vec3> voxel_pos;
-	voxel_pos.reserve(N_dim.z*N_dim.y*N_dim.x);
-	for(int k = 0; k < N_dim.z; ++k)
-	{
-		for(int i = 0; i < N_dim.y; ++i){
-			for(int j = 0; j < N_dim.x; ++j)
-			{
-				voxel_pos.push_back(glm::vec3(L_y * (float)j/N_dim.x + x_min, L_x * (float)i/N_dim.y + y_min, k*0.5));
-			}
-		}
-	}
+	// std::vector<glm::vec3> voxel_pos;
+	// voxel_pos.reserve(N_dim.z*N_dim.y*N_dim.x);
+	// for(int k = 0; k < N_dim.z; ++k)
+	// {
+	// 	for(int i = 0; i < N_dim.y; ++i){
+	// 		for(int j = 0; j < N_dim.x; ++j)
+	// 		{
+	// 			voxel_pos.push_back(glm::vec3(L_y * (float)j/N_dim.x + x_min, L_x * (float)i/N_dim.y + y_min, k*0.5));
+	// 		}
+	// 	}
+	// }
 
 	Vertex vertex(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0,0), glm::vec3(0.0f,0.0f,1.0f));
+	vertex.pos.x = x_max;
+	vertex.pos.y = y_max;
+	vertex.pos.z = z_max;
+	vert_vec.push_back(vertex);
+	vertex.pos.x = x_min;
+	vert_vec.push_back(vertex);vert_vec.push_back(vertex);
+	vertex.pos.y = y_min;
+	vert_vec.push_back(vertex);vert_vec.push_back(vertex);
+	vertex.pos.x = x_max;
+	vert_vec.push_back(vertex);vert_vec.push_back(vertex);
+	vertex.pos.y = y_max;
+	vert_vec.push_back(vertex);
 
-	for(int i = 0; i < N_dim.x ; ++i)
+
+	vertex.pos.z = z_min;
+	for(int i = 0; i < N_dim.x + 1 ; ++i)
 	{
 		vertex.pos.y = y_min;
 		vertex.pos.x = L_x * (float)i/N_dim.x + x_min;
@@ -267,6 +292,7 @@ int main(int argc, char** argv)
 		idx_vec.push_back(idx);
 		idx_vec.push_back(idx+1);
 	}
+
 
 	colorcube(vec3(x_min, y_min, z_min), vec3(L_x, L_y, L_z), grid_size);
 	// Eigen::Vector3d pos_min;
@@ -311,7 +337,6 @@ int main(int argc, char** argv)
 		// 	cout<<index<<endl;
 		// }
 
-
 	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size());
 	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size());
 	//Mesh monkey("./res/monkey3.obj");
@@ -320,23 +345,24 @@ int main(int argc, char** argv)
 	Shader cube_shader("./res/cubeShader");
 	Texture texture("./res/bricks.jpg");
 	Transform transform;
-	Camera camera(glm::vec3(0.0f, 2.0f, -8.0f), 70.0f,
-		(float)DISPLAY_WIDTH/(float)DISPLAY_HEIGHT, 0.1f, 100.0f);
-	vector<vec4> color_RGBA;
-	color_RGBA.reserve(cube_vertex.size());
-	int N_v = cube_vertex.size();
-	for(unsigned int i = 0; i < cube_vertex.size(); ++i)
-	{
-		color_RGBA.push_back(vec4((float)i/N_v,1.0 - (float)i/N_v,1.0,1.0));
-	}
+	Camera camera(glm::vec3(0.0f, 2.0f, -15.0f), 70.0f,
+		(float)DISPLAY_WIDTH/(float)DISPLAY_HEIGHT, 0.1f, 1000.0f);
+	// vector<vec4> color_RGBA;
+	// color_RGBA.reserve(cube_vertex.size());
+	// int N_v = cube_vertex.size();
+	// for(unsigned int i = 0; i < cube_vertex.size(); ++i)
+	// {
+	// 	color_RGBA.push_back(vec4((float)i/N_v,1.0 - (float)i/N_v,1.0,1.0));
+	// }
 
 	cout<<cube_vertex.size()<<'\n';
-	cout<<color_RGBA.size()<<'\n';
+	// cout<<color_RGBA.size()<<'\n';
 
-	SDL_Event e;
+	SDL_Event event;
 	auto isRunning = true;
 	auto counter = 0.0f;
 	float z_key = 0.0, trans_key = 0.0;
+	float rot_v = 0;
 	double idx_loop = 0;
 	int idx_update = 0;
 	unsigned int lastTime = 0, currentTime;
@@ -344,45 +370,51 @@ int main(int argc, char** argv)
 	while(isRunning)
 	{
 		ros::spinOnce();
-		while(SDL_PollEvent(&e))
+		while(SDL_PollEvent(&event))
 		{
-			if(e.type == SDL_QUIT)
+			if(event.type == SDL_QUIT)
 				isRunning = false;
-		}
-		SDL_PollEvent(&e);
-		switch(e.type)
-		{
-		case SDL_KEYDOWN:
-			// SDLKey keyPressed = e.key.keysym.sym;
-			switch(e.key.keysym.sym)
+			SDL_PollEvent(&event);
+			switch(event.type)
 			{
-			case SDLK_LEFT:
-				counter-=0.1;
-				break;
-			case SDLK_RIGHT:
-				counter+=0.1;
-				break;
-			case SDLK_UP:
-				z_key--;
-				break;
-			case SDLK_DOWN:
-				z_key++;
-				break;
-			case SDLK_8:
-				z_key--;
-				break;
-			case SDLK_2:
-				z_key++;
-				break;
-			case SDLK_4:
-				cout<<"key pressed\n";
-				trans_key-=0.5;
-				break;
-			case SDLK_6:
-				trans_key+=0.5;
+			case SDL_KEYUP:
+			case SDL_KEYDOWN:
+				// printf("'%c' was %s \n", event.key.keysym.sym,
+					// (event.key.state == SDL_PRESSED) ? "pressed" : "released");
+				// SDLKey keyPressed = e.key.keysym.sym;
+				switch(event.key.keysym.sym)
+				{
+				case SDLK_LEFT:
+					counter-=0.1;
+					break;
+				case SDLK_RIGHT:
+					counter+=0.1;
+					break;
+				case SDLK_UP:
+					rot_v-=0.1;
+					break;
+				case SDLK_DOWN:
+					rot_v+=0.1;
+					break;
+				case SDLK_w:
+					z_key-=2;
+					break;
+				case SDLK_s:
+					z_key+=2;
+					break;
+				case SDLK_a:
+					cout<<"key pressed\n";
+					trans_key-=2;
+					break;
+				case SDLK_d:
+					trans_key+=2;
+					break;
+				case SDLK_q:
+					exit(0);
+					break;
+				}
 				break;
 			}
-			break;
 		}
 		FPS_counter ++;
 		currentTime = SDL_GetTicks();
@@ -411,7 +443,7 @@ int main(int argc, char** argv)
 		transform.GetPos()->x = trans_key;
 		transform.GetPos()->y = 0;
 		transform.GetPos()->z = z_key/4;
-		transform.GetRot()->x = -90;
+		transform.GetRot()->x = -90 + rot_v;
 	 	transform.GetRot()->y = 0;
 		transform.GetRot()->z = counter;
 		shader.Update(transform, camera);
@@ -421,7 +453,7 @@ int main(int argc, char** argv)
 		cube_shader.Bind();
 		auto colorMem = cube.getColorMem();
 
-		if(idx_update%50 == 0 && !test_flag)
+		if(idx_update%50 == 0)
 		{
 		// for(int index = 0; index < color_RGBA.size(); ++index)
 		// for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
@@ -467,32 +499,49 @@ int main(int argc, char** argv)
 		// for(int k = 0 ; k < N_single; ++k)
 		for(int index = 0; index < N_total; ++index)
 		{
-					// cout<<single_ray[k]<<endl;
-
-				// int index = single_ray[k];
-				// cout<<"single index: "<<index<<endl;
-				// Eigen::Vector3i position = ray_cast.IndToSub(index);
-				// vector<int> pos_int(3);
-				// for(int j = 0; j<3; ++j)
-				// {
-				// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
-				// }
-				// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
-				int N_vertex = 36;
+			// cout<<single_ray[k]<<endl;
+			// int index = single_ray[k];
+			// cout<<"single index: "<<index<<endl;
+			// Eigen::Vector3i position = ray_cast.IndToSub(index);
+			// vector<int> pos_int(3);
+			// for(int j = 0; j<3; ++j)
+			// {
+			// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
+			// }
+			// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
+			int N_vertex = 36;
+			if(map_data[index] > 0.5)
+			{
 				for(int j= 0; j < N_vertex; ++j)
 				{
-					// colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
-					// colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
-					// colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
-					if(map_data[index]<0.6){
-						colorMem[index*N_vertex + j].w = 0.0;
-					}
-					else
-					{
-						colorMem[index*N_vertex + j].w = 1.0;
-					}
+					colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
+					colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
+					colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
+					colorMem[index*N_vertex + j].w = 1.0;
+				}
+			}else
+			{
+				for(int j= 0; j < N_vertex; ++j)
+				{
+					colorMem[index*N_vertex + j].w = 0.0;
 				}
 			}
+		}
+		if(test_flag == true)
+		{
+			int N_vertex = 36;
+			for(int index = 0 ; index < 100; ++index)
+			{
+				for(int j= 0; j < N_vertex; ++j)
+				{
+					colorMem[index*N_vertex + j].x = 0;
+					colorMem[index*N_vertex + j].y = 0;//sin(10*idx_loop);
+					colorMem[index*N_vertex + j].z = 1;//map_data[index];
+					// colorMem[index*N_vertex + j].w = 1;
+					colorMem[index*N_vertex + j].w = 1.0;
+				}
+			}
+		}
 		}
 	idx_update++;
 		cube_shader.Update(transform, camera);
