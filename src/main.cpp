@@ -391,14 +391,16 @@ int main(int argc, char** argv)
 					z_key+=2;
 					break;
 				case SDLK_a:
-					cout<<"key pressed\n";
 					trans_key-=2;
 					break;
 				case SDLK_d:
 					trans_key+=2;
 					break;
 				case SDLK_q:
-					exit(0);
+					isRunning = false;
+					break;
+				case SDLK_ESCAPE:
+					isRunning = false;
 					break;
 				case SDLK_r:
 					vert_key+=2;
