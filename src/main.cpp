@@ -14,8 +14,8 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int16MultiArray.h>
 
-static const int DISPLAY_WIDTH = 800;
-static const int DISPLAY_HEIGHT = 600;
+static const int DISPLAY_WIDTH = 1600;
+static const int DISPLAY_HEIGHT = 900;
 
 using namespace std;
 using namespace glm;
@@ -234,26 +234,12 @@ int main(int argc, char** argv)
 		L_x = atof(argv[5]), L_y = atof(argv[6]), L_z = atof(argv[7]);
 	}
 
-	// N_total = N_z * N_y * N_x;
 	cout<<"Voxel total count: "<<N_total<<endl;
 	float x_max = x_min + L_x;
 	float y_max = y_min + L_y;
 	float z_max = z_min + L_z;
 
 	vec3 N_dim(N_x,N_y,N_z);
-	// int N = round(L_x/grid_size);
-	// int N_z = 1;
-	// std::vector<glm::vec3> voxel_pos;
-	// voxel_pos.reserve(N_dim.z*N_dim.y*N_dim.x);
-	// for(int k = 0; k < N_dim.z; ++k)
-	// {
-	// 	for(int i = 0; i < N_dim.y; ++i){
-	// 		for(int j = 0; j < N_dim.x; ++j)
-	// 		{
-	// 			voxel_pos.push_back(glm::vec3(L_y * (float)j/N_dim.x + x_min, L_x * (float)i/N_dim.y + y_min, k*0.5));
-	// 		}
-	// 	}
-	// }
 
 	Vertex vertex(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0,0), glm::vec3(0.0f,0.0f,1.0f));
 	vertex.pos.x = x_max;
@@ -362,12 +348,13 @@ int main(int argc, char** argv)
 	SDL_Event event;
 	auto isRunning = true;
 	auto counter = 0.0f;
-	float z_key = 0.0, trans_key = 0.0;
+	float z_key = 0.0, trans_key = 0.0, vert_key = 0.0;
 	float rot_v = 0;
 	double idx_loop = 0;
 	int idx_update = 0;
 	unsigned int lastTime = 0, currentTime;
 	unsigned int FPS_counter = 0;
+	float probCutoff = 0.8;
 	while(isRunning)
 	{
 		ros::spinOnce();
@@ -413,6 +400,22 @@ int main(int argc, char** argv)
 				case SDLK_q:
 					exit(0);
 					break;
+				case SDLK_r:
+					vert_key+=2;
+					break;
+				case SDLK_f:
+					vert_key-=2;
+					break;
+				case SDLK_j:
+					if(probCutoff < 0.9)
+						probCutoff += 0.1;
+					cout<<"prob cutoff: "<<probCutoff<<endl;
+					break;
+				case SDLK_k:
+					if(probCutoff > 0.0)
+						probCutoff -= 0.1;
+					cout<<"prob cutoff: "<<probCutoff<<endl;
+					break;
 				}
 				break;
 			}
@@ -442,12 +445,13 @@ int main(int argc, char** argv)
 		shader.Bind();
 		texture.Bind();
 		transform.GetPos()->x = trans_key;
-		transform.GetPos()->y = 0;
+		transform.GetPos()->y = vert_key;
 		transform.GetPos()->z = z_key/4;
 		transform.GetRot()->x = -90 + rot_v;
 	 	transform.GetRot()->y = 0;
 		transform.GetRot()->z = counter;
 		shader.Update(transform, camera);
+		shader.setCutoff(probCutoff);
 		// monkey.Draw();
 		mesh.Draw();
 
@@ -546,7 +550,7 @@ int main(int argc, char** argv)
 					colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
 					colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
 					colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
-					colorMem[index*N_vertex + j].w = 1;
+					colorMem[index*N_vertex + j].w = map_data[index];
 				}
 			}else
 			{

@@ -7,6 +7,7 @@ in vec4 color;
 
 uniform mat4 MVP;
 uniform mat4 Normal;
+uniform float probCutoff;
 
 out vec4 color0;
 out vec3 normal0;

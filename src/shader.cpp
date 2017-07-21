@@ -25,6 +25,7 @@ Shader::Shader(const std::string& fileName)
 	m_uniforms[0] = glGetUniformLocation(m_program, "MVP");
 	m_uniforms[1] = glGetUniformLocation(m_program, "Normal");
 	m_uniforms[2] = glGetUniformLocation(m_program, "lightDirection");
+	m_uniforms[3] = glGetUniformLocation(m_program, "probCutoff");
 }
 
 Shader::~Shader()
@@ -41,6 +42,11 @@ Shader::~Shader()
 void Shader::Bind()
 {
 	glUseProgram(m_program);
+}
+
+void Shader::setCutoff(float cutoff)
+{
+	glUniform1f(m_uniforms[3], cutoff);
 }
 
 void Shader::Update(const Transform& transform, const Camera& camera)

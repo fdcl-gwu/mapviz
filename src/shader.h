@@ -12,12 +12,13 @@ public:
 
 	void Bind();
 	void Update(const Transform& transform, const Camera& camera);
+	void setCutoff(float cutoff);
 
 	virtual ~Shader();
 protected:
 private:
 	static const unsigned int NUM_SHADERS = 2;
-	static const unsigned int NUM_UNIFORMS = 3;
+	static const unsigned int NUM_UNIFORMS = 4;
 	void operator=(const Shader& shader) {}
 	Shader(const Shader& shader) {}
 
