@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(map_vis)
+project(mapviz)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11 -Wall)
-set (CMAKE_CXX_FLAGS "-std=c++14 -Wall" )
 set (CMAKE_EXE_LINKER_FLAGS "-lSDL2 -lGL -lGLEW" )
-
+set(CMAKE_CXX_FLAGS "-std=c++14 -g -O0 -Wall -fprofile-arcs -ftest-coverage")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -110,7 +109,7 @@ find_package(SDL2 REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
  INCLUDE_DIRS include
-#  LIBRARIES map_vis
+#  LIBRARIES mapviz
  CATKIN_DEPENDS roscpp rospy std_msgs
  # DEPENDS
 )
@@ -128,7 +127,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/map_vis.cpp
+#   src/${PROJECT_NAME}/mapviz.cpp
 # )
 include_directories(
 include
@@ -223,7 +222,7 @@ target_link_libraries(${PROJECT_NAME}_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_map_vis.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_mapviz.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
