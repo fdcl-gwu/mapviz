@@ -12,7 +12,7 @@ public:
 
 	void Bind();
 	void Update(const Transform& transform, const Camera& camera);
-	void setCutoff(const float& cutoff);
+	void setCutoff(float cutoff);
 
 	virtual ~Shader();
 protected:

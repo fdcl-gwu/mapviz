@@ -44,7 +44,7 @@ void Shader::Bind()
 	glUseProgram(m_program);
 }
 
-void Shader::setCutoff(const float& cutoff)
+void Shader::setCutoff(float cutoff)
 {
 	glUniform1f(m_uniforms[3], cutoff);
 }

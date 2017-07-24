@@ -17,9 +17,9 @@ void main()
 	 color0 * clamp(dot(lightDirection, normal0), 0.0, 1.0) +
 	 color0 * clamp(dot(vec3(-1,0,0), normal0), 0.0, 1.0) +
 	 color0 * clamp(dot(vec3(1,0,0), normal0), 0.0, 1.0);
-	 if (gl_FragColor.a < cutoff)
-        // alpha value less than user-specified threshold?
+	 if (gl_FragColor.a < probCutoff)
+      // alpha value less than user-specified threshold?
     {
-        discard; // yes: discard this fragment
+      discard; // yes: discard this fragment
     }
 }

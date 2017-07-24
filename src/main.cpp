@@ -13,6 +13,7 @@
 #include <ros/package.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int16MultiArray.h>
+#include "keyboard_mouse.h"
 
 static const int DISPLAY_WIDTH = 1600;
 static const int DISPLAY_HEIGHT = 900;
@@ -346,82 +347,18 @@ int main(int argc, char** argv)
 	// cout<<color_RGBA.size()<<'\n';
 
 	SDL_Event event;
-	auto isRunning = true;
-	auto counter = 0.0f;
-	float z_key = 0.0, trans_key = 0.0, vert_key = 0.0;
-	float rot_v = 0;
+	key_mouse_state km_state;
+
 	double idx_loop = 0;
 	int idx_update = 0;
 	unsigned int lastTime = 0, currentTime;
 	unsigned int FPS_counter = 0;
-	float probCutoff = 0.8;
-	while(isRunning)
+
+	while(km_state.isRunning)
 	{
 		ros::spinOnce();
-		while(SDL_PollEvent(&event))
-		{
-			if(event.type == SDL_QUIT)
-				isRunning = false;
-			SDL_PollEvent(&event);
-			switch(event.type)
-			{
-			case SDL_KEYUP:
-			case SDL_KEYDOWN:
-				// printf("'%c' was %s \n", event.key.keysym.sym,
-					// (event.key.state == SDL_PRESSED) ? "pressed" : "released");
-				// SDLKey keyPressed = e.key.keysym.sym;
-				switch(event.key.keysym.sym)
-				{
-				case SDLK_LEFT:
-					counter-=0.1;
-					break;
-				case SDLK_RIGHT:
-					counter+=0.1;
-					break;
-				case SDLK_UP:
-					rot_v-=0.1;
-					break;
-				case SDLK_DOWN:
-					rot_v+=0.1;
-					break;
-				case SDLK_w:
-					z_key-=2;
-					break;
-				case SDLK_s:
-					z_key+=2;
-					break;
-				case SDLK_a:
-					trans_key-=2;
-					break;
-				case SDLK_d:
-					trans_key+=2;
-					break;
-				case SDLK_q:
-					isRunning = false;
-					break;
-				case SDLK_ESCAPE:
-					isRunning = false;
-					break;
-				case SDLK_r:
-					vert_key+=2;
-					break;
-				case SDLK_f:
-					vert_key-=2;
-					break;
-				case SDLK_j:
-					if(probCutoff < 0.9)
-						probCutoff += 0.1;
-					cout<<"prob cutoff: "<<probCutoff<<endl;
-					break;
-				case SDLK_k:
-					if(probCutoff > 0.0)
-						probCutoff -= 0.1;
-					cout<<"prob cutoff: "<<probCutoff<<endl;
-					break;
-				}
-				break;
-			}
-		}
+		SDL_event_handle(event, km_state);// handles key and mouse input
+
 		FPS_counter ++;
 		currentTime = SDL_GetTicks();
 		if (currentTime > lastTime + 1000)
@@ -431,33 +368,28 @@ int main(int argc, char** argv)
 			FPS_counter = 0;
 		}
 
-
-
 		display.Clear(0.0f, 0.0f, 0.0f, 0.0f);
-
 		// auto sinCounter = sinf(counter);
 		// auto absSinCounter = std::abs(sinCounter);
-
-		//transform.GetPos()->x = sinCounter;
-		transform.GetRot()->y = 0;
 		//transform.GetRot()->z = counter * 100;
 		//transform.GetScale()->x = absSinCounter;
 		//transform.GetScale()->y = absSinCounter;
 
 		shader.Bind();
 		texture.Bind();
-		transform.GetPos()->x = trans_key;
-		transform.GetPos()->y = vert_key;
-		transform.GetPos()->z = z_key/4;
-		transform.GetRot()->x = -90 + rot_v;
+		transform.GetPos()->x = km_state.h_move;
+		transform.GetPos()->y = km_state.v_move;
+		transform.GetPos()->z = km_state.zoom/4;
+		transform.GetRot()->x = -90 + km_state.v_rot;
 	 	transform.GetRot()->y = 0;
-		transform.GetRot()->z = counter;
+		transform.GetRot()->z = km_state.h_rot;
 		shader.Update(transform, camera);
-		shader.setCutoff(probCutoff);
+		// shader.setCutoff(km_state.probCutoff);
 		// monkey.Draw();
 		mesh.Draw();
 
 		cube_shader.Bind();
+		cube_shader.setCutoff(km_state.probCutoff);
 		auto colorMem = cube.getColorMem();
 
 		if(idx_update%50 == 0)
@@ -525,46 +457,46 @@ int main(int argc, char** argv)
 					colorMem[index*N_vertex + j].x = 0;
 					colorMem[index*N_vertex + j].y = 0;//sin(10*idx_loop);
 					colorMem[index*N_vertex + j].z = 1;//map_data[index];
-					colorMem[index*N_vertex + j].w = 1;
+					colorMem[index*N_vertex + j].w = sin((float)index/N_total);
 				}
 				index += 5;
 			}
 		}
 		else
 		{
-		for(int index = 0; index < N_total; ++index)
-		{
-			// cout<<single_ray[k]<<endl;
-			// int index = single_ray[k];
-			// cout<<"single index: "<<index<<endl;
-			// Eigen::Vector3i position = ray_cast.IndToSub(index);
-			// vector<int> pos_int(3);
-			// for(int j = 0; j<3; ++j)
-			// {
-			// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
-			// }
-			// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
-			int N_vertex = 36;
-			if(map_data[index] > 0.5)
+			for(int index = 0; index < N_total; ++index)
 			{
-				for(int j= 0; j < N_vertex; ++j)
+				// cout<<single_ray[k]<<endl;
+				// int index = single_ray[k];
+				// cout<<"single index: "<<index<<endl;
+				// Eigen::Vector3i position = ray_cast.IndToSub(index);
+				// vector<int> pos_int(3);
+				// for(int j = 0; j<3; ++j)
+				// {
+				// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
+				// }
+				// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
+				int N_vertex = 36;
+				if(map_data[index] > 0.5)
 				{
-					colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
-					colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
-					colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
-					colorMem[index*N_vertex + j].w = map_data[index];
-				}
-			}else
-			{
-				for(int j= 0; j < N_vertex; ++j)
+					for(int j= 0; j < N_vertex; ++j)
+					{
+						colorMem[index*N_vertex + j].x = mapRGB_data[index].x;
+						colorMem[index*N_vertex + j].y = mapRGB_data[index].y;//sin(10*idx_loop);
+						colorMem[index*N_vertex + j].z = mapRGB_data[index].z;//map_data[index];
+						colorMem[index*N_vertex + j].w = map_data[index];
+					}
+				}else
 				{
-					colorMem[index*N_vertex + j].x = 0;
-					colorMem[index*N_vertex + j].y = 1;//sin(10*idx_loop);
-					colorMem[index*N_vertex + j].z = 0;//map_data[index];
-					colorMem[index*N_vertex + j].w = 0;
+					for(int j= 0; j < N_vertex; ++j)
+					{
+						colorMem[index*N_vertex + j].x = 0;
+						colorMem[index*N_vertex + j].y = 1;//sin(10*idx_loop);
+						colorMem[index*N_vertex + j].z = 0;//map_data[index];
+						colorMem[index*N_vertex + j].w = 0;
+					}
 				}
 			}
-		}
 		}
 
 		}
