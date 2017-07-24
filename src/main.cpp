@@ -13,86 +13,22 @@
 #include <ros/package.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int16MultiArray.h>
+#include <sensor_msgs/PointCloud2.h>
 #include "keyboard_mouse.h"
+#include "cube.h"
+// PCL
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/conversions.h>
+#include <pcl/PolygonMesh.h>
+#include <pcl/common/common.h>
+#include <geometry_msgs/PointStamped.h>
 
 static const int DISPLAY_WIDTH = 1600;
 static const int DISPLAY_HEIGHT = 900;
 
 using namespace std;
 using namespace glm;
-
-vector<vec3> getPosition(vec3 pos, float voxel_size)
-{
-	float half_size = voxel_size;
-	vector<vec3> translate;
-	translate.push_back(vec3( pos.x, pos.y, half_size + pos.z));
-	translate.push_back(vec3( pos.x, half_size + pos.y, half_size + pos.z));
-	translate.push_back(vec3(half_size + pos.x, half_size + pos.y, half_size + pos.z));
-	translate.push_back(vec3(half_size + pos.x, pos.y, half_size + pos.z));
-	translate.push_back(vec3( pos.x,  pos.y, pos.z));
-	translate.push_back(vec3( pos.x, half_size + pos.y, pos.z));
-	translate.push_back(vec3(half_size + pos.x, half_size + pos.y,  pos.z));
-	translate.push_back(vec3(half_size + pos.x,  pos.y,  pos.z));
-	return translate;
-};
-
-vector<vec3> normal =
-{
-	vec3(0.0, 0.0, 1.0),
-	vec3(1.0, 0.0, 0.0),
-	vec3(0.0, 1.0, 0.0),
-	vec3(0.0, 1.0, 0.0),
-	vec3(0.0, 0.0, 1.0),
-	vec3(1.0, 0.0, 0.0)
-};
-
-std::vector<Vertex> cube_vertex;
-std::vector<unsigned int> cube_index;
-
-void quad( int a, int b, int c, int d, int face, vector<vec3> positions, vec2 texture, vec4 color)
-{
-	cube_index.push_back(a);cube_index.push_back(b);cube_index.push_back(c);
-	cube_index.push_back(a);cube_index.push_back(c);cube_index.push_back(d);
-
-	cube_vertex.push_back(Vertex(positions[a], texture, normal[face], color));
-	cube_vertex.push_back(Vertex(positions[b], texture, normal[face], color));
-	cube_vertex.push_back(Vertex(positions[c], texture, normal[face], color));
-
-	cube_vertex.push_back(Vertex(positions[a], texture, normal[face], color));
-	cube_vertex.push_back(Vertex(positions[c], texture, normal[face], color));
-	cube_vertex.push_back(Vertex(positions[d], texture, normal[face], color));
-};
-
-
-
-void colorcube(vec3 min, vec3 range, float grid_size){
-	vec3 N(floor(range.x/grid_size + 0.5),
-			floor(range.y/grid_size + 0.5),
-			floor(range.z/grid_size + 0.5));
-	cout<<"Dimentions cube List: "<<N.x<<"x"<<N.y<<"x"<<N.z<<endl;
-	cube_vertex.reserve(N.x * N.y * N.z);
-	vec2 texture;
-	vec4 color(0.0f, 0.0f, 0.0f, 0.0f);
-	// float scale = grid_size;
-	vector<vec3> pos = getPosition(vec3(0,0,0), 0.2);
-	for(int i = 0; i < N.x; ++i){
-		for(int j = 0; j < N.y; ++j){
-			for(int k = 0; k < N.z; ++k){
-			pos = getPosition(vec3(range.x * (float)i/N.x + min.x,
-				range.y * (float)j/N.y + min.y, range.z * (float)k/N.z + min.z), grid_size*0.9);
-			color.x = (float)j/N.y;
-			color.y = (float)k/N.x;
-			quad(1,0,3,2,0, pos, texture, color); // front
-			quad(2,3,7,6,1, pos, texture, color); // right
-			quad(3,0,4,7,2, pos, texture, color); // bottom
-			quad(6,5,1,2,3, pos, texture, color); // top
-			quad(4,5,6,7,4, pos, texture, color); // back
-			quad(5,4,0,1,5, pos, texture, color); // left
-			}
-		}
-	}
-
-};
 
 template <typename T>
 class sub_base
@@ -173,17 +109,82 @@ void mapRGBCallback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 //     }
 // }
 
+// void pclCallback(const boost::shared_ptr<const sensor_msgs::PointCloud2 >& scanInput)
+// {
+// 	cout<<"point cloud\n";
+//
+//   // Extract PCL locations relative to the camera
+//   pcl::PCLPointCloud2 scanInputNoPtr;
+//   pcl_conversions::toPCL(*scanInput,scanInputNoPtr);
+//   pcl::PointCloud<pcl::PointXYZRGB> cloud;
+//   pcl::fromPCLPointCloud2(scanInputNoPtr, cloud);
+//
+//   // Initialize PCL 3D locations relative to the camera
+//   geometry_msgs::PointStamped cameraLocLocalFrame, cameraLocWordFrame;
+//   cameraLocLocalFrame.header = scanInput->header;
+//
+//   // Sensor transform with respect to itself is position (0,0,0) and attitude I_{3x3}
+//   cameraLocLocalFrame.point.x = 0.0;
+//   cameraLocLocalFrame.point.y = 0.0;
+//   cameraLocLocalFrame.point.z = 0.0;
+//
+//   // Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
+//   try{
+//     tfPCL2Listener.transformPoint(mapFrame, cameraLocLocalFrame, cameraLocWordFrame);
+//   }
+//   catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
+//     ROS_WARN("%s\n", ex.what());
+//     return;
+//   }
+//   Eigen::Vector3d sensorLocVector3dWorldFrame(cameraLocWordFrame.point.x, cameraLocWordFrame.point.y, cameraLocWordFrame.point.z);
+//
+//   // Inverse sensor model looped through all PCL points
+//   double tScanUpdateStart = ros::Time::now().toSec();
+//   unsigned numRays = cloud.width*cloud.height;
+//   unsigned numCellsAlongRay;
+//
+//   if(numRays > 0){
+//     for(unsigned i = 0; i < numRays; i++){
+//       pcl::PointXYZRGB pt = cloud.points[i];
+//       if(!isnan(pt.x) && !isnan(pt.y) && !isnan(pt.z)){
+//
+//         // i-th PCL location with respect to the camera
+//         cameraLocLocalFrame.point.x = pt.x;
+//         cameraLocLocalFrame.point.y = pt.y;
+//         cameraLocLocalFrame.point.z = pt.z;
+//
+//         // i-th PCL location with respect to the mapFrame
+//         try{
+//           tfPCL2Listener.transformPoint(mapFrame, cameraLocLocalFrame, cameraLocWordFrame);
+//         }
+//         catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
+//           ROS_WARN("%s\n", ex.what());
+//           return;
+//         }
+//
+//         // Initializations
+//         Eigen::Vector3d pointCloudLocVector3dWorldFrame(cameraLocWordFrame.point.x, cameraLocWordFrame.point.y, cameraLocWordFrame.point.z);// = sensorLocVector3dWorldFrame+sensorAttitude*cameraLocLocalFrame;
+//         Eigen::Vector3d pointCloudVector3dWorldFrame = pointCloudLocVector3dWorldFrame-sensorLocVector3dWorldFrame;
+//       }
+//     }
+//   }
+//
+// }
+
+
 int main(int argc, char** argv)
 {
 	ros::init(argc, argv, "visualizer");
 	ros::NodeHandle nh;
-	ros::Subscriber mapProbSub, mapRGBSub;
+	ros::Subscriber mapProbSub, mapRGBSub, pclSub;
 	sub_map mapProbListener;
     // sub_base<std_msgs::Int16MultiArray> mapRGBListener;
 	// mapRGBSub = nh.subscribe
     //  ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
     mapProbSub = nh.subscribe("/map_probabilities", 10, mapCallback);
 	mapRGBSub = nh.subscribe("/map_rgb", 10, mapRGBCallback);
+	// pclSub = nh.subscribe("/voxel_grid/output",10,pclCallback);
+
 	cout<<"waiting for map msgs...."<<endl;
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
 
@@ -388,6 +389,9 @@ int main(int argc, char** argv)
 		// monkey.Draw();
 		mesh.Draw();
 
+
+		if(km_state.map)
+		{
 		cube_shader.Bind();
 		cube_shader.setCutoff(km_state.probCutoff);
 		auto colorMem = cube.getColorMem();
@@ -504,6 +508,7 @@ int main(int argc, char** argv)
 		cube_shader.Update(transform, camera);
 		// cube.Update_value(color_RGBA, color_RGBA.size());
 		cube.Draw_cube();
+		}
 
 		display.SwapBuffers();
 		SDL_Delay(1);

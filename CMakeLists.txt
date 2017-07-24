@@ -13,10 +13,14 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+	sensor_msgs
+	pcl_msgs
+	geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+find_package(PCL REQUIRED QUIET COMPONENTS common)
 find_package(Eigen3)
 find_package(GLEW REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -110,7 +114,7 @@ find_package(SDL2 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES mapviz
- CATKIN_DEPENDS roscpp rospy std_msgs
+ CATKIN_DEPENDS roscpp rospy std_msgs pcl_msgs geometry_msgs
  # DEPENDS
 )
 
@@ -123,6 +127,7 @@ catkin_package(
 include_directories(
 	include
   ${catkin_INCLUDE_DIRS}
+	${PCL_COMMON_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

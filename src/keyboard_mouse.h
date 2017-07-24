@@ -15,6 +15,7 @@ struct key_mouse_state
     float h_move = 0;
     float zoom = 0;
     float probCutoff = 0.8;
+	bool map = true;
 };
 
 void SDL_event_handle(SDL_Event& event, key_mouse_state& control)
@@ -66,14 +67,21 @@ void SDL_event_handle(SDL_Event& event, key_mouse_state& control)
 			case SDLK_f:
 				control.v_move-=2;
 				break;
+			case SDLK_m:
+				control.map = !control.map;
+				break;
 			case SDLK_j:
 				if(control.probCutoff < 0.9)
 					control.probCutoff += 0.1;
+				else
+					control.probCutoff = 1.0;
 				cout<<"prob cutoff: "<<control.probCutoff<<endl;
 				break;
 			case SDLK_k:
-				if(control.probCutoff > 0.0)
+				if(control.probCutoff > 0.1)
 					control.probCutoff -= 0.1;
+				else
+					control.probCutoff = 1e-5;
 				cout<<"prob cutoff: "<<control.probCutoff<<endl;
 				break;
 			}
