@@ -16,6 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
 	sensor_msgs
 	pcl_msgs
 	geometry_msgs
+	tf2_ros
+	pcl_ros
+	pcl_conversions
 )
 
 ## System dependencies are found with CMake's conventions
@@ -114,7 +117,7 @@ find_package(SDL2 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
 #  LIBRARIES mapviz
- CATKIN_DEPENDS roscpp rospy std_msgs pcl_msgs geometry_msgs
+ CATKIN_DEPENDS roscpp rospy std_msgs pcl_msgs geometry_msgs tf2_ros
  # DEPENDS
 )
 

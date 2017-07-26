@@ -12,6 +12,7 @@ using namespace std;
 using namespace glm;
 
 
+
 vector<vec3> getPosition(vec3 pos, float voxel_size)
 {
 	float half_size = voxel_size;

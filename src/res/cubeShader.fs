@@ -16,7 +16,9 @@ void main()
 	gl_FragColor = color0 * clamp(dot(-lightDirection, normal0), 0.0, 1.0) +
 	 color0 * clamp(dot(lightDirection, normal0), 0.0, 1.0) +
 	 color0 * clamp(dot(vec3(-1,0,0), normal0), 0.0, 1.0) +
-	 color0 * clamp(dot(vec3(1,0,0), normal0), 0.0, 1.0);
+	 color0 * clamp(dot(vec3(1,0,0), normal0), 0.0, 1.0) +
+	 color0 * clamp(dot(vec3(0,1,0), normal0), 0.0, 1.0) +
+	 color0 * clamp(dot(vec3(0,-1,0), normal0), 0.0, 1.0);
 	 if (gl_FragColor.a < probCutoff)
       // alpha value less than user-specified threshold?
     {

@@ -14,15 +14,24 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int16MultiArray.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/LaserScan.h>
 #include "keyboard_mouse.h"
 #include "cube.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/message_filter.h"
+#include "message_filters/subscriber.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 // PCL
-#include <pcl/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
+#include <pcl/PCLPointCloud2.h>
 #include <pcl/conversions.h>
-#include <pcl/PolygonMesh.h>
-#include <pcl/common/common.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <geometry_msgs/PointStamped.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+
+#include <Eigen/Dense>
 
 static const int DISPLAY_WIDTH = 1600;
 static const int DISPLAY_HEIGHT = 900;
@@ -109,67 +118,74 @@ void mapRGBCallback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 //     }
 // }
 
-// void pclCallback(const boost::shared_ptr<const sensor_msgs::PointCloud2 >& scanInput)
-// {
-// 	cout<<"point cloud\n";
-//
-//   // Extract PCL locations relative to the camera
-//   pcl::PCLPointCloud2 scanInputNoPtr;
-//   pcl_conversions::toPCL(*scanInput,scanInputNoPtr);
-//   pcl::PointCloud<pcl::PointXYZRGB> cloud;
-//   pcl::fromPCLPointCloud2(scanInputNoPtr, cloud);
-//
-//   // Initialize PCL 3D locations relative to the camera
-//   geometry_msgs::PointStamped cameraLocLocalFrame, cameraLocWordFrame;
-//   cameraLocLocalFrame.header = scanInput->header;
-//
-//   // Sensor transform with respect to itself is position (0,0,0) and attitude I_{3x3}
-//   cameraLocLocalFrame.point.x = 0.0;
-//   cameraLocLocalFrame.point.y = 0.0;
-//   cameraLocLocalFrame.point.z = 0.0;
-//
-//   // Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
-//   try{
-//     tfPCL2Listener.transformPoint(mapFrame, cameraLocLocalFrame, cameraLocWordFrame);
-//   }
-//   catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
-//     ROS_WARN("%s\n", ex.what());
-//     return;
-//   }
-//   Eigen::Vector3d sensorLocVector3dWorldFrame(cameraLocWordFrame.point.x, cameraLocWordFrame.point.y, cameraLocWordFrame.point.z);
-//
-//   // Inverse sensor model looped through all PCL points
-//   double tScanUpdateStart = ros::Time::now().toSec();
-//   unsigned numRays = cloud.width*cloud.height;
-//   unsigned numCellsAlongRay;
-//
-//   if(numRays > 0){
-//     for(unsigned i = 0; i < numRays; i++){
-//       pcl::PointXYZRGB pt = cloud.points[i];
-//       if(!isnan(pt.x) && !isnan(pt.y) && !isnan(pt.z)){
-//
-//         // i-th PCL location with respect to the camera
-//         cameraLocLocalFrame.point.x = pt.x;
-//         cameraLocLocalFrame.point.y = pt.y;
-//         cameraLocLocalFrame.point.z = pt.z;
-//
-//         // i-th PCL location with respect to the mapFrame
-//         try{
-//           tfPCL2Listener.transformPoint(mapFrame, cameraLocLocalFrame, cameraLocWordFrame);
-//         }
-//         catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
-//           ROS_WARN("%s\n", ex.what());
-//           return;
-//         }
-//
-//         // Initializations
-//         Eigen::Vector3d pointCloudLocVector3dWorldFrame(cameraLocWordFrame.point.x, cameraLocWordFrame.point.y, cameraLocWordFrame.point.z);// = sensorLocVector3dWorldFrame+sensorAttitude*cameraLocLocalFrame;
-//         Eigen::Vector3d pointCloudVector3dWorldFrame = pointCloudLocVector3dWorldFrame-sensorLocVector3dWorldFrame;
-//       }
-//     }
-//   }
-//
-// }
+	// tf2_ros::TransformListener tfPCL2Listener, tfLaserScanListener;// tf handles
+	// tf2_ros::MessageFilter<sensor_msgs::PointCloud2> *tfPCL2Filter;//      pcl tf filter pointer
+	// tf2_ros::MessageFilter<sensor_msgs::LaserScan>   *tfLaserScanFilter;// laser tf filter pointer
+	// std::string mapFrame = "/wrold";
+	// tf2_ros::Buffer tfPCLBuffer, tfLaserBuffer;
+	// tf2_ros::TransformListener tfPCLListener(tfPCLBuffer), tfLaserListner(tfLaserBuffer);
+
+bool pcl_flag = false;
+std::vector<Vertex> pcl_vertex;
+std::vector<unsigned int> pcl_index;
+// pcl_vertex.reserve(320*240);
+// pcl_index.reserve(320*240);
+
+void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
+{
+	pcl_flag = true;
+	cout<<input->width<<" x "<<input->height<<" point_step "<<input->point_step<<endl;
+
+	sensor_msgs::PointCloud2 cloud_msg;
+	sensor_msgs::PointCloud2Modifier modifier(cloud_msg);
+	   modifier.setPointCloud2Fields(3, "x", 1, sensor_msgs::PointField::FLOAT32,
+                                  "y", 1, sensor_msgs::PointField::FLOAT32,
+                                  "z", 1, sensor_msgs::PointField::FLOAT32);
+sensor_msgs::PointCloud2Iterator<float> iter_rgb(cloud_msg, "x");
+	// sensor_msgs::PointCloud2Iterator<uint8_t> iter_xyz(input, "xyz");
+	// for(auto x: iter_x)
+	// {
+	// 	cout<<x<<endl;
+	// }
+	// BOOST_FOREACH (const pcl::PointXYZ& pt, input->data)
+    // printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+
+	// // Extract PCL locations relative to the camera
+	// pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_data(new pcl::PointCloud<pcl::PointXYZRGB>);
+	// pcl::fromROSMsg(*input, *cloud_data);
+	sensor_msgs::PointCloud2 msg_world;
+	tf::StampedTransform transform;
+	tf::TransformListener tfPCLListener;
+	// Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
+	// try{
+	// 	tfPCLListener.lookupTransform("vicon/Maya/Maya","/world",ros::Time(0), transform);
+	// 	pcl_ros::transformPointCloud("/world", transform.inverse(), *input, msg_world);
+	// }
+	// catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
+	// 	ROS_WARN("%s\n", ex.what());
+	// 	return;
+	// }
+
+	pcl::PCLPointCloud2 pcl_pc2;
+    pcl_conversions::toPCL(*input,pcl_pc2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromPCLPointCloud2(pcl_pc2,*temp_cloud);
+	pcl_vertex.clear();
+	pcl_index.clear();
+	BOOST_FOREACH (const pcl::PointXYZ& pt, temp_cloud->points)
+	{
+		if(!isnan(pt.x))// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+		{
+		pcl_vertex.push_back(Vertex(vec3(pt.x,pt.y,pt.z), vec4(1,1,1,1)));
+		pcl_index.push_back(0);
+		}
+	}
+	//  for(auto point:temp_cloud->points)
+	//  {
+	// 	 cout<<"here"<<endl;
+	//  }
+
+}
 
 
 int main(int argc, char** argv)
@@ -178,12 +194,14 @@ int main(int argc, char** argv)
 	ros::NodeHandle nh;
 	ros::Subscriber mapProbSub, mapRGBSub, pclSub;
 	sub_map mapProbListener;
+
+
     // sub_base<std_msgs::Int16MultiArray> mapRGBListener;
 	// mapRGBSub = nh.subscribe
     //  ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
     mapProbSub = nh.subscribe("/map_probabilities", 10, mapCallback);
 	mapRGBSub = nh.subscribe("/map_rgb", 10, mapRGBCallback);
-	// pclSub = nh.subscribe("/voxel_grid/output",10,pclCallback);
+	// pclSub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth/points",10,pclCallback);
 
 	cout<<"waiting for map msgs...."<<endl;
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
@@ -196,6 +214,10 @@ int main(int argc, char** argv)
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
 	std::vector<unsigned int> idx_vec;
+	// while(!pcl_flag)
+	// {
+	// 		ros::spinOnce();
+	// }
 
 	// construct simple test case
 	bool test_flag = false;
@@ -328,6 +350,7 @@ int main(int argc, char** argv)
 
 	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size());
 	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size());
+	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size());
 	//Mesh monkey("./res/monkey3.obj");
 	// cout<<ros::package::getPath("map_viz")<<endl;
 	Shader shader("./res/basicShader");
@@ -389,6 +412,7 @@ int main(int argc, char** argv)
 		// monkey.Draw();
 		mesh.Draw();
 
+		pcl_mesh.Draw_pcl();
 
 		if(km_state.map)
 		{
@@ -396,8 +420,6 @@ int main(int argc, char** argv)
 		cube_shader.setCutoff(km_state.probCutoff);
 		auto colorMem = cube.getColorMem();
 
-		if(idx_update%50 == 0)
-		{
 		// for(int index = 0; index < color_RGBA.size(); ++index)
 		// for(unsigned int index = 0; index< color_RGBA.size() && idx_loop == 0; ++index)
 		// {
@@ -503,7 +525,6 @@ int main(int argc, char** argv)
 			}
 		}
 
-		}
 	idx_update++;
 		cube_shader.Update(transform, camera);
 		// cube.Update_value(color_RGBA, color_RGBA.size());

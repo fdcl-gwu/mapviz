@@ -108,6 +108,13 @@ void Mesh::Update_value(std::vector<glm::vec4>& color_RGBA, int N){
     // glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 0, 0);
 }
 
+void Mesh::Draw_pcl()
+{
+    glBindVertexArray(m_vertexArrayObject);
+    glDrawArrays(GL_POINTS, 0, m_numIndices);
+    glBindVertexArray(0);
+}
+
 void Mesh::Draw_cube()
 {
 	glBindVertexArray(m_vertexArrayObject);

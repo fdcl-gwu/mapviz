@@ -22,6 +22,13 @@ public:
 		this->normal = normal;
 		this->color = color;
 	}
+	Vertex(const glm::vec3& pos = glm::vec3(0.0f,0.0f,0.0f),
+		const glm::vec4& color = glm::vec4(1.0f,0.0f,0.0f,1.0f)
+		)
+	{
+		this->pos = pos;
+		this->color = color;
+	}
 
 	glm::vec3* GetPos() { return &pos; }
 	glm::vec2* GetTexCoord() { return &texCoord; }
@@ -52,6 +59,7 @@ public:
 
 	void Draw();
 	void Draw_cube();
+	void Draw_pcl();
 	void Update_value(std::vector<glm::vec4>& color_RGBA, int N);
 	glm::vec4* getColorMem(){return graph;};
 
