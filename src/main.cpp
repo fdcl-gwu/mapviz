@@ -31,6 +31,8 @@
 #include <geometry_msgs/PointStamped.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 
+#include <ros/package.h>
+
 #include <Eigen/Dense>
 
 static const int DISPLAY_WIDTH = 1600;
@@ -190,6 +192,7 @@ sensor_msgs::PointCloud2Iterator<float> iter_rgb(cloud_msg, "x");
 
 int main(int argc, char** argv)
 {
+
 	ros::init(argc, argv, "visualizer");
 	ros::NodeHandle nh;
 	ros::Subscriber mapProbSub, mapRGBSub, pclSub;
@@ -353,9 +356,10 @@ int main(int argc, char** argv)
 	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size());
 	//Mesh monkey("./res/monkey3.obj");
 	// cout<<ros::package::getPath("map_viz")<<endl;
-	Shader shader("./res/basicShader");
-	Shader cube_shader("./res/cubeShader");
-	Texture texture("./res/bricks.jpg");
+	std::string path = ros::package::getPath("mapviz");
+	Shader shader(path+"/src/res/basicShader");
+	Shader cube_shader(path+"/src/res/cubeShader");
+	Texture texture(path+"/src/res/bricks.jpg");
 	Transform transform;
 	Camera camera(glm::vec3(0.0f, 2.0f, -15.0f), 70.0f,
 		(float)DISPLAY_WIDTH/(float)DISPLAY_HEIGHT, 0.1f, 1000.0f);
