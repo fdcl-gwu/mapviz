@@ -22,7 +22,14 @@ void Mesh::InitMesh(const IndexedModel& model)
 	glGenBuffers(NUM_BUFFERS, m_vertexArrayBuffers);
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vertexArrayBuffers[POSITION_VB]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(model.positions[0]) * model.positions.size(), &model.positions[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(model.positions[0]) * model.positions.size(), NULL, GL_STREAM_DRAW);
+    pos_mem = (glm::vec3 *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+    for(int i = 0; i < model.positions.size(); i++) {
+      pos_mem[i].x = 0.0;
+      pos_mem[i].y = 0.0;
+      pos_mem[i].z = 0.0;
+    }
+    glUnmapBuffer(GL_ARRAY_BUFFER);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -41,12 +48,13 @@ void Mesh::InitMesh(const IndexedModel& model)
     glBufferData(GL_ARRAY_BUFFER, sizeof(model.color[0]) * model.color.size(), NULL, GL_STREAM_DRAW);
     graph = (glm::vec4 *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
     for(int i = 0; i < model.color.size(); i++) {
-      graph[i].x = 0;
-      graph[i].y = 0;
+      graph[i].x = 1.0;
       graph[i].y = 1.0;
+      graph[i].z = 1.0;
       graph[i].w = 1.0;
     }
     glUnmapBuffer(GL_ARRAY_BUFFER);
+
     glEnableVertexAttribArray(3);
     glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 0, 0);
 

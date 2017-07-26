@@ -34,6 +34,7 @@
 #include <ros/package.h>
 
 #include <Eigen/Dense>
+#include<glm/gtc/quaternion.hpp>
 
 static const int DISPLAY_WIDTH = 1600;
 static const int DISPLAY_HEIGHT = 900;
@@ -130,8 +131,10 @@ void mapRGBCallback(const std_msgs::Int16MultiArray::ConstPtr& msg)
 bool pcl_flag = false;
 std::vector<Vertex> pcl_vertex;
 std::vector<unsigned int> pcl_index;
-// pcl_vertex.reserve(320*240);
-// pcl_index.reserve(320*240);
+tf::StampedTransform tf_uav;
+int pcl_size= 320*240*100;
+// pcl_vertex.reserve(320*240*100);
+// pcl_index.reserve(320*240*100);
 
 void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
@@ -143,7 +146,7 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 	   modifier.setPointCloud2Fields(3, "x", 1, sensor_msgs::PointField::FLOAT32,
                                   "y", 1, sensor_msgs::PointField::FLOAT32,
                                   "z", 1, sensor_msgs::PointField::FLOAT32);
-sensor_msgs::PointCloud2Iterator<float> iter_rgb(cloud_msg, "x");
+								  sensor_msgs::PointCloud2Iterator<float> iter_rgb(cloud_msg, "x");
 	// sensor_msgs::PointCloud2Iterator<uint8_t> iter_xyz(input, "xyz");
 	// for(auto x: iter_x)
 	// {
@@ -156,32 +159,35 @@ sensor_msgs::PointCloud2Iterator<float> iter_rgb(cloud_msg, "x");
 	// pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_data(new pcl::PointCloud<pcl::PointXYZRGB>);
 	// pcl::fromROSMsg(*input, *cloud_data);
 	sensor_msgs::PointCloud2 msg_world;
-	tf::StampedTransform transform;
-	tf::TransformListener tfPCLListener;
-	// Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
-	// try{
-	// 	tfPCLListener.lookupTransform("vicon/Maya/Maya","/world",ros::Time(0), transform);
-	// 	pcl_ros::transformPointCloud("/world", transform.inverse(), *input, msg_world);
-	// }
-	// catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
-	// 	ROS_WARN("%s\n", ex.what());
-	// 	return;
-	// }
+	// tf::StampedTransform transform;
+	// tf::TransformListener tfPCLListener;
+	// // Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
+	try{
+	// 	tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), transform);
+	pcl_ros::transformPointCloud("/world", tf_uav, *input, msg_world);
+	}
+	catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
+		ROS_WARN("%s\n", ex.what());
+	// // 	return;
+	}
 
 	pcl::PCLPointCloud2 pcl_pc2;
-    pcl_conversions::toPCL(*input,pcl_pc2);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl_conversions::toPCL(msg_world,pcl_pc2);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromPCLPointCloud2(pcl_pc2,*temp_cloud);
 	pcl_vertex.clear();
 	pcl_index.clear();
-	BOOST_FOREACH (const pcl::PointXYZ& pt, temp_cloud->points)
+	BOOST_FOREACH (const pcl::PointXYZRGB& pt, temp_cloud->points)
 	{
 		if(!isnan(pt.x))// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
 		{
-		pcl_vertex.push_back(Vertex(vec3(pt.x,pt.y,pt.z), vec4(1,1,1,1)));
+		pcl_vertex.push_back(Vertex(vec3(pt.x,pt.y,pt.z),
+			vec4((float)pt.r/255,(float)pt.g/255,(float)pt.b/255,1.0)));
+
 		pcl_index.push_back(0);
 		}
 	}
+	// cout<<pcl_vertex[0].color.r<<" "<<pcl_vertex[0].color.g<<" "<<pcl_vertex[0].color.b<<endl;
 	//  for(auto point:temp_cloud->points)
 	//  {
 	// 	 cout<<"here"<<endl;
@@ -204,10 +210,13 @@ int main(int argc, char** argv)
     //  ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
     mapProbSub = nh.subscribe("/map_probabilities", 10, mapCallback);
 	mapRGBSub = nh.subscribe("/map_rgb", 10, mapRGBCallback);
-	// pclSub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth/points",10,pclCallback);
+	pclSub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth_registered/points",10,pclCallback);
 
 	cout<<"waiting for map msgs...."<<endl;
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
+
+
+	tf::TransformListener tfPCLListener;
 
 	float grid_size = 0.075;
 	// unsigned int N_x, N_y,N_z;
@@ -217,10 +226,10 @@ int main(int argc, char** argv)
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
 	std::vector<unsigned int> idx_vec;
-	// while(!pcl_flag)
-	// {
-	// 		ros::spinOnce();
-	// }
+	while(!pcl_flag)
+	{
+			ros::spinOnce();
+	}
 
 	// construct simple test case
 	bool test_flag = false;
@@ -268,7 +277,8 @@ int main(int argc, char** argv)
 
 	vec3 N_dim(N_x,N_y,N_z);
 
-	Vertex vertex(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec2(0,0), glm::vec3(0.0f,0.0f,1.0f));
+	Vertex vertex(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f,1.0f,1.0f,1.0f));
+
 	vertex.pos.x = x_max;
 	vertex.pos.y = y_max;
 	vertex.pos.z = z_max;
@@ -351,6 +361,9 @@ int main(int argc, char** argv)
 		// 	cout<<index<<endl;
 		// }
 
+	// pcl_vertex.reserve(pcl_size);
+	// pcl_index.reserve(pcl_size);
+
 	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size());
 	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size());
 	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size());
@@ -382,10 +395,30 @@ int main(int argc, char** argv)
 	unsigned int lastTime = 0, currentTime;
 	unsigned int FPS_counter = 0;
 
-	while(km_state.isRunning)
+	while(km_state.isRunning && nh.ok())
 	{
 		ros::spinOnce();
 		SDL_event_handle(event, km_state);// handles key and mouse input
+		// glm::mat4 tf_rot;
+		// glm::quat tf_quat;
+		// glm::vec3 euler;
+
+		try{
+			tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), tf_uav);
+			// cout<<tf_uav.getOrigin()[0]<<endl;
+			// auto tf_quatv = tf_uav.getRotation();
+			// cout<<tf_quatv[0]<<endl;
+			// tf_quat = glm::quat(tf_quatv[0], tf_quatv[1],tf_quatv[2],tf_quatv[3]);
+			// euler = glm::eulerAngles(tf_quat) * 3.14159f / 180.f;
+
+			// tf_rot = glm::gtc::quaternion::toMat4(tf_quat);
+			// cout<<tf_quat.eulerAngles()[0]<<endl;
+			// pcl_ros::transformPointCloud("/world", transform.inverse(), *input, msg_world);
+		}
+		catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
+			ROS_WARN("%s\n", ex.what());
+			// ros::Duration(0.1).sleep();
+		}
 
 		FPS_counter ++;
 		currentTime = SDL_GetTicks();
@@ -404,7 +437,7 @@ int main(int argc, char** argv)
 		//transform.GetScale()->y = absSinCounter;
 
 		shader.Bind();
-		texture.Bind();
+		// texture.Bind();
 		transform.GetPos()->x = km_state.h_move;
 		transform.GetPos()->y = km_state.v_move;
 		transform.GetPos()->z = km_state.zoom/4;
@@ -415,8 +448,25 @@ int main(int argc, char** argv)
 		// shader.setCutoff(km_state.probCutoff);
 		// monkey.Draw();
 		mesh.Draw();
+		auto pcl_colorMem = pcl_mesh.getColorMem();
+		auto pcl_PosMem = pcl_mesh.getPosMem();
+		for(int i = 0; i < pcl_vertex.size(); ++i)
+		{
+			pcl_colorMem[i].x = pcl_vertex[i].color.r;
+			pcl_colorMem[i].y = pcl_vertex[i].color.g;
+			pcl_colorMem[i].z = pcl_vertex[i].color.b;
+			pcl_colorMem[i].w = 1.0;
 
-		pcl_mesh.Draw_pcl();
+			pcl_PosMem[i].x = pcl_vertex[i].pos.x;
+			pcl_PosMem[i].y = pcl_vertex[i].pos.y;
+			pcl_PosMem[i].z = pcl_vertex[i].pos.z;
+		}
+
+		// transform.GetRot()->x = euler[0];
+		// transform.GetRot()->y = euler[1];
+		// transform.GetRot()->z = euler[2];
+		// shader.Update(transform, camera);
+		// pcl_mesh.Draw_pcl();
 
 		if(km_state.map)
 		{

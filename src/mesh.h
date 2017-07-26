@@ -4,6 +4,8 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
+#include<glm/gtc/quaternion.hpp>
+#include<glm/common.hpp>
 #include <string>
 #include <vector>
 #include "obj_loader.h"
@@ -62,11 +64,13 @@ public:
 	void Draw_pcl();
 	void Update_value(std::vector<glm::vec4>& color_RGBA, int N);
 	glm::vec4* getColorMem(){return graph;};
+	glm::vec3* getPosMem(){return pos_mem;};
 
 	virtual ~Mesh();
 protected:
 private:
 	glm::vec4 *graph;
+	glm::vec3 *pos_mem;
 	static const unsigned int NUM_BUFFERS = 5;
 	void operator=(const Mesh& mesh) {}
 	Mesh(const Mesh& mesh) {}
