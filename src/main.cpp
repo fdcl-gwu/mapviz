@@ -132,9 +132,10 @@ bool pcl_flag = false;
 std::vector<Vertex> pcl_vertex;
 std::vector<unsigned int> pcl_index;
 tf::StampedTransform tf_uav;
-int pcl_size= 320*240*100;
+int pcl_size= 320*240*150;
 // pcl_vertex.reserve(320*240*100);
 // pcl_index.reserve(320*240*100);
+int index_accum = 0;
 
 void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
@@ -175,16 +176,16 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
     pcl_conversions::toPCL(msg_world,pcl_pc2);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromPCLPointCloud2(pcl_pc2,*temp_cloud);
-	pcl_vertex.clear();
-	pcl_index.clear();
+	// pcl_vertex.clear();
+	// pcl_index.clear();
 	BOOST_FOREACH (const pcl::PointXYZRGB& pt, temp_cloud->points)
 	{
-		if(!isnan(pt.x))// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+		if(!isnan(pt.x) && index_accum < pcl_size)// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
 		{
-		pcl_vertex.push_back(Vertex(vec3(pt.x,pt.y,pt.z),
-			vec4((float)pt.r/255,(float)pt.g/255,(float)pt.b/255,1.0)));
-
-		pcl_index.push_back(0);
+		pcl_vertex[index_accum] = Vertex(vec3(pt.x,pt.y,pt.z),
+			vec4((float)pt.r/255,(float)pt.g/255,(float)pt.b/255,1.0));
+		index_accum++;
+		// pcl_index.push_back(0);
 		}
 	}
 	// cout<<pcl_vertex[0].color.r<<" "<<pcl_vertex[0].color.g<<" "<<pcl_vertex[0].color.b<<endl;
@@ -214,6 +215,13 @@ int main(int argc, char** argv)
 
 	cout<<"waiting for map msgs...."<<endl;
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
+
+	for(int k = 0; k<pcl_size; ++k)
+	{
+	  pcl_vertex.push_back(Vertex(vec3(0,0,0),
+				vec4(0,0,0,0.0)));
+	  pcl_index.push_back(k);
+	}
 
 
 	tf::TransformListener tfPCLListener;
