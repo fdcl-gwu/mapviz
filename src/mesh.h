@@ -57,7 +57,7 @@ class Mesh
 {
 public:
     Mesh(const std::string& fileName);
-	Mesh(std::vector<Vertex> vertices, unsigned int numVertices, std::vector<unsigned int> indices, unsigned int numIndices);
+	Mesh(std::vector<Vertex> vertices, unsigned int numVertices, std::vector<unsigned int> indices, unsigned int numIndices, bool pcl_flag);
 
 	void Draw();
 	void Draw_cube();
@@ -75,7 +75,7 @@ private:
 	void operator=(const Mesh& mesh) {}
 	Mesh(const Mesh& mesh) {}
 
-    void InitMesh(const IndexedModel& model);
+    void InitMesh(const IndexedModel& model, bool pcl_flag);
 
 	GLuint m_vertexArrayObject;
 	GLuint m_vertexArrayBuffers[NUM_BUFFERS];

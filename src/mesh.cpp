@@ -9,10 +9,10 @@
 
 Mesh::Mesh(const std::string& fileName)
 {
-    InitMesh(OBJModel(fileName).ToIndexedModel());
+    InitMesh(OBJModel(fileName).ToIndexedModel(), false);
 }
 
-void Mesh::InitMesh(const IndexedModel& model)
+void Mesh::InitMesh(const IndexedModel& model, bool pcl_flag)
 {
     m_numIndices = model.indices.size();
 
@@ -22,14 +22,22 @@ void Mesh::InitMesh(const IndexedModel& model)
 	glGenBuffers(NUM_BUFFERS, m_vertexArrayBuffers);
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vertexArrayBuffers[POSITION_VB]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(model.positions[0]) * model.positions.size(), NULL, GL_STREAM_DRAW);
-    pos_mem = (glm::vec3 *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-    for(int i = 0; i < model.positions.size(); i++) {
-      pos_mem[i].x = 0.0;
-      pos_mem[i].y = 0.0;
-      pos_mem[i].z = 0.0;
+    if(pcl_flag)
+    {
+    	glBufferData(GL_ARRAY_BUFFER, sizeof(model.positions[0]) * model.positions.size(), NULL, GL_STREAM_DRAW);
+        pos_mem = (glm::vec3 *)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        for(int i = 0; i < model.positions.size(); i++) {
+          pos_mem[i].x = 0.0;
+          pos_mem[i].y = 0.0;
+          pos_mem[i].z = 0.0;
+        }
+        glUnmapBuffer(GL_ARRAY_BUFFER);
+    }else
+    {
+    	glBufferData(GL_ARRAY_BUFFER, sizeof(model.positions[0]) * model.positions.size(),
+            &model.positions[0], GL_STATIC_DRAW);
+
     }
-    glUnmapBuffer(GL_ARRAY_BUFFER);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -64,7 +72,8 @@ void Mesh::InitMesh(const IndexedModel& model)
 	glBindVertexArray(0);
 }
 
-Mesh::Mesh(std::vector<Vertex> vertices, unsigned int numVertices, std::vector<unsigned int> indices, unsigned int numIndices)
+Mesh::Mesh(std::vector<Vertex> vertices, unsigned int numVertices,
+    std::vector<unsigned int> indices, unsigned int numIndices, bool pcl_flag)
 {
     IndexedModel model;
 
@@ -79,7 +88,7 @@ Mesh::Mesh(std::vector<Vertex> vertices, unsigned int numVertices, std::vector<u
 	for(unsigned int i = 0; i < numIndices; i++)
         model.indices.push_back(indices[i]);
 
-    InitMesh(model);
+    InitMesh(model, pcl_flag);
 }
 
 Mesh::~Mesh()

@@ -164,7 +164,7 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 	// // Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
 	try{
 	// 	tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), transform);
-	pcl_ros::transformPointCloud("/world", tf_uav, *input, msg_world);
+	pcl_ros::transformPointCloud("/world", tf_uav.inverse(), *input, msg_world);
 	}
 	catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
 		ROS_WARN("%s\n", ex.what());
@@ -364,9 +364,9 @@ int main(int argc, char** argv)
 	// pcl_vertex.reserve(pcl_size);
 	// pcl_index.reserve(pcl_size);
 
-	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size());
-	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size());
-	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size());
+	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size(), false);
+	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size(), false);
+	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size(), true);
 	//Mesh monkey("./res/monkey3.obj");
 	// cout<<ros::package::getPath("map_viz")<<endl;
 	std::string path = ros::package::getPath("mapviz");
@@ -404,7 +404,7 @@ int main(int argc, char** argv)
 		// glm::vec3 euler;
 
 		try{
-			tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), tf_uav);
+			tfPCLListener.lookupTransform("/camera_rgb_optical_frame","/world",ros::Time(0), tf_uav);
 			// cout<<tf_uav.getOrigin()[0]<<endl;
 			// auto tf_quatv = tf_uav.getRotation();
 			// cout<<tf_quatv[0]<<endl;
@@ -466,7 +466,7 @@ int main(int argc, char** argv)
 		// transform.GetRot()->y = euler[1];
 		// transform.GetRot()->z = euler[2];
 		// shader.Update(transform, camera);
-		// pcl_mesh.Draw_pcl();
+		pcl_mesh.Draw_pcl();
 
 		if(km_state.map)
 		{
