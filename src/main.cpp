@@ -458,6 +458,9 @@ int main(int argc, char** argv)
 		mesh.Draw();
 		auto pcl_colorMem = pcl_mesh.getColorMem();
 		auto pcl_PosMem = pcl_mesh.getPosMem();
+
+    if(km_state.pcl)
+    {
 		for(int i = 0; i < pcl_vertex.size(); ++i)
 		{
 			pcl_colorMem[i].x = pcl_vertex[i].color.r;
@@ -475,7 +478,7 @@ int main(int argc, char** argv)
 		// transform.GetRot()->z = euler[2];
 		// shader.Update(transform, camera);
 		pcl_mesh.Draw_pcl();
-
+    }
 		if(km_state.map)
 		{
 		cube_shader.Bind();
