@@ -132,6 +132,13 @@ void Mesh::Draw_pcl()
     glBindVertexArray(0);
 }
 
+void Mesh::Draw_line()
+{
+    glBindVertexArray(m_vertexArrayObject);
+    glDrawArrays(GL_LINES, 0, m_numIndices);
+    glBindVertexArray(0);
+}
+
 void Mesh::Draw_cube()
 {
 	glBindVertexArray(m_vertexArrayObject);

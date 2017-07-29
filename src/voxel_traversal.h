@@ -112,8 +112,6 @@ using namespace std;
          unitVectorWFVector[0] = norm_vec2[0];
          unitVectorWFVector[1] = norm_vec2[1];
          unitVectorWFVector[2] = norm_vec2[2];
-
-
      }
  };
 

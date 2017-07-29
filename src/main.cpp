@@ -140,7 +140,7 @@ int index_accum = 0;
 void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 {
 	pcl_flag = true;
-	cout<<input->width<<" x "<<input->height<<" point_step "<<input->point_step<<endl;
+	// cout<<input->width<<" x "<<input->height<<" point_step "<<input->point_step<<endl;
 
 	sensor_msgs::PointCloud2 cloud_msg;
 	sensor_msgs::PointCloud2Modifier modifier(cloud_msg);
@@ -164,8 +164,8 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 	// tf::TransformListener tfPCLListener;
 	// // Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
 	try{
-	// 	tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), transform);
-	pcl_ros::transformPointCloud("/world", tf_uav.inverse(), *input, msg_world);
+	   // 	tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), transform);
+	   pcl_ros::transformPointCloud("/world", tf_uav.inverse(), *input, msg_world);
 	}
 	catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
 		ROS_WARN("%s\n", ex.what());
@@ -173,14 +173,14 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 	}
 
 	pcl::PCLPointCloud2 pcl_pc2;
-    pcl_conversions::toPCL(msg_world,pcl_pc2);
+    pcl_conversions::toPCL(*input,pcl_pc2);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     pcl::fromPCLPointCloud2(pcl_pc2,*temp_cloud);
 	// pcl_vertex.clear();
 	// pcl_index.clear();
 	BOOST_FOREACH (const pcl::PointXYZRGB& pt, temp_cloud->points)
 	{
-		if(!isnan(pt.x) && index_accum < pcl_size)// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+		if(!isnan(pt.x) && index_accum < pcl_size && pt.x < 5 && pt.x > -5 && pt.y < 5 && pt.y > -5)// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
 		{
 		pcl_vertex[index_accum] = Vertex(vec3(pt.x,pt.y,pt.z),
 			vec4((float)pt.r/255,(float)pt.g/255,(float)pt.b/255,1.0));
@@ -196,7 +196,6 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr& input)
 
 }
 
-
 int main(int argc, char** argv)
 {
 
@@ -211,7 +210,7 @@ int main(int argc, char** argv)
     //  ("/map_rgb",   1, &sub_base<std_msgs::Int16MultiArray>::callback, &mapRGBListener);
     mapProbSub = nh.subscribe("/map_probabilities", 10, mapCallback);
 	mapRGBSub = nh.subscribe("/map_rgb", 10, mapRGBCallback);
-	pclSub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth_registered/points",10,pclCallback);
+	pclSub = nh.subscribe<sensor_msgs::PointCloud2>("/depth_pcl",10,pclCallback);
 
 	cout<<"waiting for map msgs...."<<endl;
 	cout<<"size of mapRGB: "<<mapRGB_data.size()<<endl;
@@ -234,10 +233,10 @@ int main(int argc, char** argv)
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
 	std::vector<unsigned int> idx_vec;
-	while(!pcl_flag)
-	{
-			ros::spinOnce();
-	}
+	// while(!pcl_flag)
+	// {
+	// 		ros::spinOnce();
+	// }
 
 	// construct simple test case
 	bool test_flag = false;
@@ -246,7 +245,7 @@ int main(int argc, char** argv)
 		test_flag = true;
 		cout<<"test value: "<<argv[1]<<endl;
 		grid_size = 0.5;
-		L_x = 10, L_y = 10, L_z = 5;
+		L_x = 10, L_y = 10, L_z = 3;
 		N_x = L_x/grid_size;
 		N_y = L_y/grid_size;
 		N_z = L_z/grid_size;
@@ -325,20 +324,36 @@ int main(int argc, char** argv)
 		idx_vec.push_back(idx+1);
 	}
 
-
 	colorcube(vec3(x_min, y_min, z_min), vec3(L_x, L_y, L_z), grid_size);
-	// Eigen::Vector3d pos_min;
-	// pos_min << x_min, y_min, z_min;
 
-	// auto ray_cast  = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
+    vector<Vertex> axis_v;
+    vector<unsigned int> axis_idx;
+    Vertex vert_axr(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f,0.0f,0.0f,1.0f));
+    Vertex vert_axg(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f,1.0f,0.0f,1.0f));
+    Vertex vert_axb(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f,0.0f,1.0f,1.0f));
+    axis_v.push_back(vert_axr);
+    vert_axr.pos.x++;
+    axis_v.push_back(vert_axr);
+    axis_v.push_back(vert_axg);
+    vert_axg.pos.y++;
+    axis_v.push_back(vert_axg);
+    axis_v.push_back(vert_axb);
+    vert_axb.pos.z++;
+    axis_v.push_back(vert_axb);
+    for(unsigned int k = 0; k < 6; ++k)
+        axis_idx.push_back(k);
+
+	Eigen::Vector3d pos_min;
+	pos_min << x_min, y_min, z_min;
+	auto ray_cast  = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
+
+	Eigen::Vector3d ray_start(0,0,0);
+	Eigen::Vector3d ray_end(4,4,4);
+  	ray_cast.setStartEnd(ray_start, ray_end);
+    // cout<<"ending ray: \n"<<ray_end<<endl;
 	//
-	// Eigen::Vector3d ray_start(6,1,1);
-	// Eigen::Vector3d ray_end(1,9,4);
-	// cout<<"ending ray: \n"<<ray_end<<endl;
- //  	ray_cast.setStartEnd(ray_start, ray_end);
-	//
-	// cout<<"ray voxel simple: "<<ray_cast.SingleRayCasting3D()<<endl;
-	// // for(int index = 0 ; index < ray_cast.SingleRayCasting3D(); ++index)
+	cout<<"ray voxel simple: "<<ray_cast.SingleRayCasting3D()<<endl;
+	// for(int index = 0 ; index < ray_cast.SingleRayCasting3D(); ++index)
 	// // {
 	// // 	cout<<<<endl;
 	// // }
@@ -369,12 +384,10 @@ int main(int argc, char** argv)
 		// 	cout<<index<<endl;
 		// }
 
-	// pcl_vertex.reserve(pcl_size);
-	// pcl_index.reserve(pcl_size);
-
 	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size(), false);
 	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size(), false);
 	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size(), true);
+    Mesh axis(axis_v, axis_v.size(), axis_idx, axis_idx.size(), false);
 	//Mesh monkey("./res/monkey3.obj");
 	// cout<<ros::package::getPath("map_viz")<<endl;
 	std::string path = ros::package::getPath("mapviz");
@@ -424,10 +437,21 @@ int main(int argc, char** argv)
 			// pcl_ros::transformPointCloud("/world", transform.inverse(), *input, msg_world);
 		}
 		catch (tf::TransformException &ex){// warn if there's an issue (typically looping bag files)
-			ROS_WARN("%s\n", ex.what());
+			// ROS_WARN("%s\n", ex.what());
 			// ros::Duration(0.1).sleep();
 		}
 
+        // camera.setPos(vec3(tf_uav.getOrigin().x(), tf_uav.getOrigin().y(),tf_uav.getOrigin().z()));
+        auto tf_quat = tf_uav.getRotation();
+        // cout<<tf_quat[0] <<" "<<tf_quat[1] << " "<<tf_quat[2]<< " " <<tf_quat[3] <<endl;
+        auto rotation = glm::conjugate(quat(tf_quat[0],tf_quat[1],tf_quat[2],tf_quat[3]));
+        // Conversion from Euler angles (in radians) to Quaternion
+        vec3 EulerAngles(radians(180.f),radians(0.f),radians(0.f));
+        auto ros2glm = quat(EulerAngles);
+        auto rotMatrix = glm::mat4_cast(rotation*ros2glm);
+        // auto mat_rot = vec_q.toMat4();
+        // auto vec3_q = glm::conjugate(vec_q) * glm::vec3(0.0f, 0.0f, -1.0f);
+        // camera.setRot(rotMatrix);
 		FPS_counter ++;
 		currentTime = SDL_GetTicks();
 		if (currentTime > lastTime + 1000)
@@ -438,24 +462,18 @@ int main(int argc, char** argv)
 		}
 
 		display.Clear(0.0f, 0.0f, 0.0f, 0.0f);
-		// auto sinCounter = sinf(counter);
-		// auto absSinCounter = std::abs(sinCounter);
-		//transform.GetRot()->z = counter * 100;
-		//transform.GetScale()->x = absSinCounter;
-		//transform.GetScale()->y = absSinCounter;
 
 		shader.Bind();
-		// texture.Bind();
 		transform.GetPos()->x = km_state.h_move;
 		transform.GetPos()->y = km_state.v_move;
 		transform.GetPos()->z = km_state.zoom/4;
 		transform.GetRot()->x = -90 + km_state.v_rot;
-	 	transform.GetRot()->y = 0;
+        transform.GetRot()->y = 0;
 		transform.GetRot()->z = km_state.h_rot;
 		shader.Update(transform, camera);
-		// shader.setCutoff(km_state.probCutoff);
-		// monkey.Draw();
 		mesh.Draw();
+        axis.Draw();
+
 		auto pcl_colorMem = pcl_mesh.getColorMem();
 		auto pcl_PosMem = pcl_mesh.getPosMem();
 
@@ -557,14 +575,14 @@ int main(int argc, char** argv)
 		{
 			for(int index = 0; index < N_total; ++index)
 			{
-				// cout<<single_ray[k]<<endl;
-				// int index = single_ray[k];
+				// cout<<single_ray[index]<<endl;
+				// int index = single_ray[index];
 				// cout<<"single index: "<<index<<endl;
 				// Eigen::Vector3i position = ray_cast.IndToSub(index);
 				// vector<int> pos_int(3);
 				// for(int j = 0; j<3; ++j)
 				// {
-				// 	pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
+					// pos_int[j] = floor((position[j] - pos_min[j])/ray_cast.getBinSize());
 				// }
 				// index = 36*(position[0] +  N_dim.x*position[1] +  N_dim.y*N_dim.x*position[2]);
 				int N_vertex = 36;

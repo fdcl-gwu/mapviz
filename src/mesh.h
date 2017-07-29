@@ -62,6 +62,7 @@ public:
 	void Draw();
 	void Draw_cube();
 	void Draw_pcl();
+	void Draw_line();
 	void Update_value(std::vector<glm::vec4>& color_RGBA, int N);
 	glm::vec4* getColorMem(){return graph;};
 	glm::vec3* getPosMem(){return pos_mem;};
