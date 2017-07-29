@@ -30,6 +30,7 @@
 #include <pcl_ros/transforms.h>
 #include <geometry_msgs/PointStamped.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include <geometry_msgs/TransformStamped.h>
 
 #include <ros/package.h>
 
@@ -328,17 +329,17 @@ int main(int argc, char** argv)
 
     vector<Vertex> axis_v;
     vector<unsigned int> axis_idx;
-    Vertex vert_axr(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f,0.0f,0.0f,1.0f));
-    Vertex vert_axg(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f,1.0f,0.0f,1.0f));
-    Vertex vert_axb(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f,0.0f,1.0f,1.0f));
+    Vertex vert_axr(glm::vec3(0.0f, 0.0f, 0.f), glm::vec4(1.0f,0.0f,0.0f,1.0f));
+    Vertex vert_axg(glm::vec3(0.0f, 0.0f, 0.f), glm::vec4(0.0f,1.0f,0.0f,1.0f));
+    Vertex vert_axb(glm::vec3(0.0f, 0.0f, 0.f), glm::vec4(0.0f,0.0f,1.0f,1.0f));
     axis_v.push_back(vert_axr);
-    vert_axr.pos.x++;
+    vert_axr.pos.x+=0.5;
     axis_v.push_back(vert_axr);
     axis_v.push_back(vert_axg);
-    vert_axg.pos.y++;
+    vert_axg.pos.y+=0.5;
     axis_v.push_back(vert_axg);
     axis_v.push_back(vert_axb);
-    vert_axb.pos.z++;
+    vert_axb.pos.z+=0.5;
     axis_v.push_back(vert_axb);
     for(unsigned int k = 0; k < 6; ++k)
         axis_idx.push_back(k);
@@ -387,7 +388,17 @@ int main(int argc, char** argv)
 	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size(), false);
 	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size(), false);
 	Mesh pcl_mesh(pcl_vertex, pcl_vertex.size(), pcl_index, pcl_index.size(), true);
-    Mesh axis(axis_v, axis_v.size(), axis_idx, axis_idx.size(), false);
+    Mesh axis(axis_v, axis_v.size(), axis_idx, axis_idx.size(), true);
+
+    auto axis_colorMem = axis.getColorMem();
+    auto axis_posMem = axis.getPosMem();
+    for(int i = 0; i < axis_v.size(); ++i)
+    {
+        axis_colorMem[i] = axis_v[i].color;
+        axis_posMem[i] = axis_v[i].pos;
+    }
+
+
 	//Mesh monkey("./res/monkey3.obj");
 	// cout<<ros::package::getPath("map_viz")<<endl;
 	std::string path = ros::package::getPath("mapviz");
@@ -395,7 +406,7 @@ int main(int argc, char** argv)
 	Shader cube_shader(path+"/src/res/cubeShader");
 	Texture texture(path+"/src/res/bricks.jpg");
 	Transform transform;
-	Camera camera(glm::vec3(0.0f, 2.0f, -15.0f), 70.0f,
+	Camera camera(glm::vec3(0.0f, 0.0f, -15.0f), 70.0f,
 		(float)DISPLAY_WIDTH/(float)DISPLAY_HEIGHT, 0.1f, 1000.0f);
 	// vector<vec4> color_RGBA;
 	// color_RGBA.reserve(cube_vertex.size());
@@ -444,14 +455,31 @@ int main(int argc, char** argv)
         // camera.setPos(vec3(tf_uav.getOrigin().x(), tf_uav.getOrigin().y(),tf_uav.getOrigin().z()));
         auto tf_quat = tf_uav.getRotation();
         // cout<<tf_quat[0] <<" "<<tf_quat[1] << " "<<tf_quat[2]<< " " <<tf_quat[3] <<endl;
-        auto rotation = glm::conjugate(quat(tf_quat[0],tf_quat[1],tf_quat[2],tf_quat[3]));
+        auto rotation = quat(tf_quat[0],tf_quat[1],tf_quat[2],tf_quat[3]);
+        auto camera_pos = vec3(tf_uav.getOrigin().x(), tf_uav.getOrigin().y(), tf_uav.getOrigin().z());
+        // auto camera_pos = vec3(0, 1, 2);
         // Conversion from Euler angles (in radians) to Quaternion
-        vec3 EulerAngles(radians(180.f),radians(0.f),radians(0.f));
+        vec3 EulerAngles(radians(90.f),radians(-90.f),radians(180.f));
         auto ros2glm = quat(EulerAngles);
-        auto rotMatrix = glm::mat4_cast(rotation*ros2glm);
+        auto rotMatrix = glm::mat3_cast(ros2glm * rotation);
+        auto eulerRot = glm::eulerAngles(ros2glm * rotation);
+        cout<< "euler:  "<< eulerRot.x << " " << eulerRot.y << " " << eulerRot.z << endl;
+
+        vec3 CameraAngles(radians(180.f),radians(90.f),radians(90.f));
+        auto w2camera = quat(CameraAngles);
+        auto rotMatrix2 = glm::mat3_cast(w2camera * rotation);
+        auto rotMat4 = glm::mat4_cast(ros2glm * rotation);
+
+        camera_pos = rotMatrix*(-camera_pos);
+
+        // camera.setPos(vec3(camera_pos.x, -camera_pos.y, -camera_pos.z));
+        // camera.setForward(glm::normalize(rotMatrix2 * vec3(0,0,1)) - camera_pos);
+        // camera.setUp(glm::normalize(vec3(0,0,-1)));
         // auto mat_rot = vec_q.toMat4();
         // auto vec3_q = glm::conjugate(vec_q) * glm::vec3(0.0f, 0.0f, -1.0f);
         // camera.setRot(rotMatrix);
+        // cout<<" camera pos: "<<camera.getPos().x<< " " << camera.getPos().y << " " << camera.getPos().z << endl;
+
 		FPS_counter ++;
 		currentTime = SDL_GetTicks();
 		if (currentTime > lastTime + 1000)
@@ -467,11 +495,16 @@ int main(int argc, char** argv)
 		transform.GetPos()->x = km_state.h_move;
 		transform.GetPos()->y = km_state.v_move;
 		transform.GetPos()->z = km_state.zoom/4;
-		transform.GetRot()->x = -90 + km_state.v_rot;
-        transform.GetRot()->y = 0;
-		transform.GetRot()->z = km_state.h_rot;
+		transform.GetRot()->x = km_state.v_rot - 2.0;
+        // transform.GetRot()->y = 0;
+		transform.GetRot()->z = km_state.h_rot - eulerRot.z + 3.14;
 		shader.Update(transform, camera);
 		mesh.Draw();
+
+        for(int i = 0; i < axis_v.size(); ++i)
+        {
+            axis_posMem[i] = rotMatrix * (axis_v[i].pos) +  camera_pos;
+        }
         axis.Draw();
 
 		auto pcl_colorMem = pcl_mesh.getColorMem();
