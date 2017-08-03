@@ -265,11 +265,12 @@ int main(int argc, char** argv)
 	    for (int i = 1; i < argc; ++i) {
 	        std::cout << atof(argv[i]) << ", ";
     	}
+        ros::param::get("z_map_min", z_min);
 		L_x = N_x * grid_size;
 		L_y = N_y * grid_size;
 		L_z = N_z * grid_size;
 		N_total = N_z * N_y * N_x;
-		x_min = -L_x/2, y_min = -L_y/2, z_min = 0;
+		x_min = -L_x/2, y_min = -L_y/2;
 	}
 	if(argc==8)
 	{
@@ -301,7 +302,7 @@ int main(int argc, char** argv)
 	vert_vec.push_back(vertex);
 
 
-	vertex.pos.z = z_min;
+	vertex.pos.z = 0.0;//z_min;
 	for(int i = 0; i < N_dim.x + 1 ; ++i)
 	{
 		vertex.pos.y = y_min;
@@ -472,12 +473,12 @@ int main(int argc, char** argv)
 
         camera_pos = rotMatrix*(-camera_pos);
 
-        // camera.setPos(vec3(camera_pos.x, -camera_pos.y, -camera_pos.z));
-        // camera.setForward(glm::normalize(rotMatrix2 * vec3(0,0,1)) - camera_pos);
+        // camera.setPos(vec3(camera_pos.x, camera_pos.y, -camera_pos.z));
+        // camera.setForward(glm::normalize(rotMatrix2 * vec3(0,1,0)) - camera_pos);
         // camera.setUp(glm::normalize(vec3(0,0,-1)));
         // auto mat_rot = vec_q.toMat4();
         // auto vec3_q = glm::conjugate(vec_q) * glm::vec3(0.0f, 0.0f, -1.0f);
-        // camera.setRot(rotMatrix);
+        camera.setRot(rotMatrix);
         // cout<<" camera pos: "<<camera.getPos().x<< " " << camera.getPos().y << " " << camera.getPos().z << endl;
 
 		FPS_counter ++;
