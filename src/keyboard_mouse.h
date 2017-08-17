@@ -16,6 +16,7 @@ struct key_mouse_state
     float zoom = 0;
     float probCutoff = 0.8;
 	bool map = true;
+    bool map_clear = false;
   bool pcl = false;
 };
 
@@ -68,9 +69,12 @@ void SDL_event_handle(SDL_Event& event, key_mouse_state& control)
 			case SDLK_f:
 				control.v_move-=2;
 				break;
-      case SDLK_p:
+            case SDLK_p:
 				control.pcl = !control.pcl;
-        break;
+                break;
+            case SDLK_c:
+				control.map_clear = true;
+                break;
 			case SDLK_m:
 				control.map = !control.map;
 				break;

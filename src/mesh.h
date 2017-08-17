@@ -4,40 +4,38 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
-#include<glm/gtc/quaternion.hpp>
-#include<glm/common.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/common.hpp>
 #include <string>
 #include <vector>
 #include "obj_loader.h"
 
 struct Vertex
 {
-public:
-	Vertex(const glm::vec3& pos = glm::vec3(0.0f,0.0f,0.0f),
-		const glm::vec2& texCoord = glm::vec2(0.0f,0.0f),
-		const glm::vec3& normal= glm::vec3(0.0f,0.0f,1.0f),
-		const glm::vec4& color = glm::vec4(1.0f,0.0f,0.0f,1.0f)
-		)
+  public:
+	Vertex(const glm::vec3 &pos = glm::vec3(0.0f, 0.0f, 0.0f),
+		   const glm::vec2 &texCoord = glm::vec2(0.0f, 0.0f),
+		   const glm::vec3 &normal = glm::vec3(0.0f, 0.0f, 1.0f),
+		   const glm::vec4 &color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f))
 	{
 		this->pos = pos;
 		this->texCoord = texCoord;
 		this->normal = normal;
 		this->color = color;
 	}
-	Vertex(const glm::vec3& pos = glm::vec3(0.0f,0.0f,0.0f),
-		const glm::vec4& color = glm::vec4(1.0f,0.0f,0.0f,1.0f)
-		)
+	Vertex(const glm::vec3 &pos = glm::vec3(0.0f, 0.0f, 0.0f),
+		   const glm::vec4 &color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f))
 	{
 		this->pos = pos;
 		this->color = color;
 	}
 
-	glm::vec3* GetPos() { return &pos; }
-	glm::vec2* GetTexCoord() { return &texCoord; }
-	glm::vec3* GetNormal() { return &normal; }
-	glm::vec4* GetColor() { return &color; }
+	glm::vec3 *GetPos() { return &pos; }
+	glm::vec2 *GetTexCoord() { return &texCoord; }
+	glm::vec3 *GetNormal() { return &normal; }
+	glm::vec4 *GetColor() { return &color; }
 
-// private:
+	// private:
 	glm::vec3 pos;
 	glm::vec2 texCoord;
 	glm::vec3 normal;
@@ -55,28 +53,29 @@ enum MeshBufferPositions
 
 class Mesh
 {
-public:
-    Mesh(const std::string& fileName);
+  public:
+	Mesh(const std::string &fileName);
 	Mesh(std::vector<Vertex> vertices, unsigned int numVertices, std::vector<unsigned int> indices, unsigned int numIndices, bool pcl_flag);
 
 	void Draw();
 	void Draw_cube();
 	void Draw_pcl();
 	void Draw_line();
-	void Update_value(std::vector<glm::vec4>& color_RGBA, int N);
-	glm::vec4* getColorMem(){return graph;};
-	glm::vec3* getPosMem(){return pos_mem;};
+	void Update_value(std::vector<glm::vec4> &color_RGBA, int N);
+	glm::vec4 *getColorMem() { return graph; };
+	glm::vec3 *getPosMem() { return pos_mem; };
 
 	virtual ~Mesh();
-protected:
-private:
+
+  protected:
+  private:
 	glm::vec4 *graph;
 	glm::vec3 *pos_mem;
 	static const unsigned int NUM_BUFFERS = 5;
-	void operator=(const Mesh& mesh) {}
-	Mesh(const Mesh& mesh) {}
+	void operator=(const Mesh &mesh) {}
+	Mesh(const Mesh &mesh) {}
 
-    void InitMesh(const IndexedModel& model, bool pcl_flag);
+	void InitMesh(const IndexedModel &model, bool pcl_flag);
 
 	GLuint m_vertexArrayObject;
 	GLuint m_vertexArrayBuffers[NUM_BUFFERS];
