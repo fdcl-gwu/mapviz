@@ -113,20 +113,6 @@ void mapRGBCallback(const std_msgs::Int16MultiArray::ConstPtr &msg)
 	}
 }
 
-// void update(auto& vbo_data, int N_voxel){
-//     for(int index = 0; index < N_voxel; ++index)
-//     {
-//       vao_data.push_back(msg.data[index]);
-//     }
-// }
-
-// tf2_ros::TransformListener tfPCL2Listener, tfLaserScanListener;// tf handles
-// tf2_ros::MessageFilter<sensor_msgs::PointCloud2> *tfPCL2Filter;//      pcl tf filter pointer
-// tf2_ros::MessageFilter<sensor_msgs::LaserScan>   *tfLaserScanFilter;// laser tf filter pointer
-// std::string mapFrame = "/wrold";
-// tf2_ros::Buffer tfPCLBuffer, tfLaserBuffer;
-// tf2_ros::TransformListener tfPCLListener(tfPCLBuffer), tfLaserListner(tfLaserBuffer);
-
 bool pcl_flag = false;
 std::vector<Vertex> pcl_vertex;
 std::vector<unsigned int> pcl_index;
@@ -135,7 +121,6 @@ int pcl_size = 320 * 240 * 150;
 // pcl_vertex.reserve(320*240*100);
 // pcl_index.reserve(320*240*100);
 int index_accum = 0;
-
 void pclCallback(const sensor_msgs::PointCloud2ConstPtr &input)
 {
 	pcl_flag = true;
@@ -147,21 +132,7 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr &input)
 								  "y", 1, sensor_msgs::PointField::FLOAT32,
 								  "z", 1, sensor_msgs::PointField::FLOAT32);
 	sensor_msgs::PointCloud2Iterator<float> iter_rgb(cloud_msg, "x");
-	// sensor_msgs::PointCloud2Iterator<uint8_t> iter_xyz(input, "xyz");
-	// for(auto x: iter_x)
-	// {
-	// 	cout<<x<<endl;
-	// }
-	// BOOST_FOREACH (const pcl::PointXYZ& pt, input->data)
-	// printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
-
-	// // Extract PCL locations relative to the camera
-	// pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_data(new pcl::PointCloud<pcl::PointXYZRGB>);
-	// pcl::fromROSMsg(*input, *cloud_data);
 	sensor_msgs::PointCloud2 msg_world;
-	// tf::StampedTransform transform;
-	// tf::TransformListener tfPCLListener;
-	// // Sensor origin with respect to the mapFrame (use try for time loopbacks with simulations)
 	try
 	{
 		// 	tfPCLListener.lookupTransform("/Maya","/world",ros::Time(0), transform);
@@ -186,14 +157,8 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr &input)
 			pcl_vertex[index_accum] = Vertex(vec3(pt.x, pt.y, pt.z),
 											 vec4((float)pt.r / 255, (float)pt.g / 255, (float)pt.b / 255, 1.0));
 			index_accum++;
-			// pcl_index.push_back(0);
 		}
 	}
-	// cout<<pcl_vertex[0].color.r<<" "<<pcl_vertex[0].color.g<<" "<<pcl_vertex[0].color.b<<endl;
-	//  for(auto point:temp_cloud->points)
-	//  {
-	// 	 cout<<"here"<<endl;
-	//  }
 }
 
 int main(int argc, char **argv)
@@ -433,7 +398,7 @@ int main(int argc, char **argv)
 		auto ros2glm = quat(EulerAngles);
 		auto rotMatrix = glm::mat3_cast(ros2glm * rotation);
 		auto eulerRot = glm::eulerAngles(ros2glm * rotation);
-		cout << "euler:  " << eulerRot.x << " " << eulerRot.y << " " << eulerRot.z << endl;
+		// cout << "euler:  " << eulerRot.x << " " << eulerRot.y << " " << eulerRot.z << endl;
 
 		vec3 CameraAngles(radians(180.f), radians(90.f), radians(90.f));
 		auto w2camera = quat(CameraAngles);
@@ -480,16 +445,6 @@ int main(int argc, char **argv)
 		auto pcl_colorMem = pcl_mesh.getColorMem();
 		auto pcl_PosMem = pcl_mesh.getPosMem();
 
-        if(km_state.map_clear)
-        {
-            int i = 0;
-            for(auto pcl: pcl_vertex)
-            {
-                pcl_colorMem[i].w = 0.0;
-                i++;
-            }
-            km_state.map_clear = false;
-        }
 
 		if (km_state.pcl)
 		{
@@ -505,6 +460,17 @@ int main(int argc, char **argv)
 				pcl_PosMem[i].z = pcl_vertex[i].pos.z;
 			}
 			pcl_mesh.Draw_pcl();
+            if(km_state.map_clear)
+            {
+                pcl_vertex.clear();
+                index_accum = 0;
+                for (int k = 0; k < pcl_size; ++k)
+	            {
+		            pcl_vertex.push_back(Vertex(vec3(0, 0, 0),
+								vec4(0, 0, 0, 0.0)));
+	            }
+                km_state.map_clear = false;
+            }
 		}
 		if (km_state.map)
 		{
