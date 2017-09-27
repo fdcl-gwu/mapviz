@@ -150,9 +150,17 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr &input)
 	pcl::fromPCLPointCloud2(pcl_pc2, *temp_cloud);
 	// pcl_vertex.clear();
 	// pcl_index.clear();
+    float x_min, y_min, z_min,x_max, y_max, z_max;
+    ros::param::get("z_map_min", z_min);
+    ros::param::get("x_map_min", x_min);
+    ros::param::get("y_map_min", y_min);
+    ros::param::get("z_map_max", z_max);
+    ros::param::get("x_map_max", x_max);
+    ros::param::get("y_map_max", y_max);
+
 	BOOST_FOREACH (const pcl::PointXYZRGB &pt, temp_cloud->points)
 	{
-		if (!isnan(pt.x) && index_accum < pcl_size && pt.x < 10.3 && pt.x > 0.5 && pt.y < 3.5 && pt.y > -8.3) // printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+		if (!isnan(pt.x) && index_accum < pcl_size && pt.x < x_max && pt.x > x_min && pt.y < y_max && pt.y > y_min) // printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
 		{
 			pcl_vertex[index_accum] = Vertex(vec3(pt.x, pt.y, pt.z),
 											 vec4((float)pt.r / 255, (float)pt.g / 255, (float)pt.b / 255, 1.0));
