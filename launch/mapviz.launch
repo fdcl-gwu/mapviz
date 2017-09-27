@@ -1,0 +1,5 @@
+<launch>
+  <group ns="mapping">
+    <node name="visualizer" pkg="mapviz" type="mapviz_node" respawn="false" output="screen"/>
+  </group>
+</launch>

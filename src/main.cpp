@@ -152,7 +152,7 @@ void pclCallback(const sensor_msgs::PointCloud2ConstPtr &input)
 	// pcl_index.clear();
 	BOOST_FOREACH (const pcl::PointXYZRGB &pt, temp_cloud->points)
 	{
-		if (!isnan(pt.x) && index_accum < pcl_size && pt.x < 5 && pt.x > -5 && pt.y < 5 && pt.y > -5) // printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
+		if (!isnan(pt.x) && index_accum < pcl_size && pt.x < 10.3 && pt.x > 0.5 && pt.y < 3.5 && pt.y > -8.3) // printf ("\t(%f, %f, %f)\n", pt.x, pt.y, pt.z);
 		{
 			pcl_vertex[index_accum] = Vertex(vec3(pt.x, pt.y, pt.z),
 											 vec4((float)pt.r / 255, (float)pt.g / 255, (float)pt.b / 255, 1.0));
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 	float grid_size = 0.075;
 	// unsigned int N_x, N_y,N_z;
 	float L_x, L_y, L_z;
-	float x_min, y_min, z_min;
+	float x_min, y_min, z_min,x_max, y_max, z_max;
 
 	Display display(DISPLAY_WIDTH, DISPLAY_HEIGHT, "OpenGL");
 	std::vector<Vertex> vert_vec;
@@ -228,12 +228,25 @@ int main(int argc, char **argv)
 		{
 			std::cout << atof(argv[i]) << ", ";
 		}
-		ros::param::get("z_map_min", z_min);
 		L_x = N_x * grid_size;
 		L_y = N_y * grid_size;
 		L_z = N_z * grid_size;
 		N_total = N_z * N_y * N_x;
 		x_min = -L_x / 2, y_min = -L_y / 2;
+        ros::param::get("z_map_min", z_min);
+        ros::param::get("x_map_min", x_min);
+        ros::param::get("y_map_min", y_min);
+        ros::param::get("z_map_max", z_max);
+        ros::param::get("x_map_max", x_max);
+        ros::param::get("y_map_max", y_max);
+        // L_x = x_max - x_min;
+		// L_y = y_max - y_min;
+		// L_z = z_max - z_min;
+        N_y = L_y / grid_size; //132x158x24
+		N_x = L_x / grid_size;
+		N_z = L_z / grid_size;
+        cout << "RGB map dimentions from param: " << N_x << "x" << N_y << "x" << N_z << endl;
+
 	}
 	if (argc == 8)
 	{
@@ -243,14 +256,14 @@ int main(int argc, char **argv)
 	}
 
 	cout << "Voxel total count: " << N_total << endl;
-	float x_max = x_min + L_x;
-	float y_max = y_min + L_y;
-	float z_max = z_min + L_z;
+	// float x_max = x_min + L_x;
+	// float y_max = y_min + L_y;
+	// float z_max = z_min + L_z;
 
 	vec3 N_dim(N_x, N_y, N_z);
 
 	Vertex vertex(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
-
+    // line for the top
 	vertex.pos.x = x_max;
 	vertex.pos.y = y_max;
 	vertex.pos.z = z_max;
@@ -268,6 +281,8 @@ int main(int argc, char **argv)
 	vert_vec.push_back(vertex);
 
 	vertex.pos.z = 0.0; //z_min;
+
+    // x axis lines
 	for (int i = 0; i < N_dim.x + 1; ++i)
 	{
 		vertex.pos.y = y_min;
@@ -276,12 +291,16 @@ int main(int argc, char **argv)
 		vertex.pos.y = L_y + y_min;
 		vert_vec.push_back(vertex);
 
-		vertex.pos.x = x_min;
-		vertex.pos.y = L_y * (float)i / N_dim.y + y_min;
-		vert_vec.push_back(vertex);
-		vertex.pos.x = L_x + x_min;
-		vert_vec.push_back(vertex);
 	}
+    // y axis lines
+    for (int i = 0; i < N_dim.y + 1; ++i)
+    {
+        vertex.pos.x = x_min;
+        vertex.pos.y = L_y * (float)i / N_dim.y + y_min;
+        vert_vec.push_back(vertex);
+        vertex.pos.x = L_x + x_min;
+        vert_vec.push_back(vertex);
+    }
 
 	for (unsigned int i = 0; i < vert_vec.size(); i += 2)
 	{
@@ -312,14 +331,14 @@ int main(int argc, char **argv)
 
 	Eigen::Vector3d pos_min;
 	pos_min << x_min, y_min, z_min;
-	auto ray_cast = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
+	// auto ray_cast = Ray_base(x_min, y_min, z_min, L_x, L_y, L_z, grid_size);
 
-	Eigen::Vector3d ray_start(0, 0, 0);
-	Eigen::Vector3d ray_end(4, 4, 4);
-	ray_cast.setStartEnd(ray_start, ray_end);
+	// Eigen::Vector3d ray_start(0, 0, 0);
+	// Eigen::Vector3d ray_end(4, 4, 4);
+	// ray_cast.setStartEnd(ray_start, ray_end);
 	// cout<<"ending ray: \n"<<ray_end<<endl;
 	//
-	cout << "ray voxel simple: " << ray_cast.SingleRayCasting3D() << endl;
+	// cout << "ray voxel simple: " << ray_cast.SingleRayCasting3D() << endl;
 
 	Mesh mesh(vert_vec, vert_vec.size(), idx_vec, idx_vec.size(), false);
 	Mesh cube(cube_vertex, cube_vertex.size(), cube_index, cube_index.size(), false);
@@ -328,7 +347,7 @@ int main(int argc, char **argv)
 
 	auto axis_colorMem = axis.getColorMem();
 	auto axis_posMem = axis.getPosMem();
-	for (int i = 0; i < axis_v.size(); ++i)
+	for (uint i = 0; i < axis_v.size(); ++i)
 	{
 		axis_colorMem[i] = axis_v[i].color;
 		axis_posMem[i] = axis_v[i].pos;
@@ -432,11 +451,11 @@ int main(int argc, char **argv)
 		transform.GetPos()->z = km_state.zoom / 4;
 		transform.GetRot()->x = km_state.v_rot - 2.0;
 		// transform.GetRot()->y = 0;
-		transform.GetRot()->z = km_state.h_rot - eulerRot.z + 3.14;
+		transform.GetRot()->z = km_state.h_rot;//- eulerRot.z + 3.14;
 		shader.Update(transform, camera);
 		mesh.Draw();
 
-		for (int i = 0; i < axis_v.size(); ++i)
+		for (uint i = 0; i < axis_v.size(); ++i)
 		{
 			axis_posMem[i] = rotMatrix * (axis_v[i].pos) + camera_pos;
 		}
@@ -448,7 +467,7 @@ int main(int argc, char **argv)
 
 		if (km_state.pcl)
 		{
-			for (int i = 0; i < pcl_vertex.size(); ++i)
+			for (uint i = 0; i < pcl_vertex.size(); ++i)
 			{
 				pcl_colorMem[i].x = pcl_vertex[i].color.r;
 				pcl_colorMem[i].y = pcl_vertex[i].color.g;

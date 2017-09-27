@@ -65,9 +65,9 @@ void colorcube(vec3 min, vec3 range, float grid_size){
 	vec4 color(0.0f, 0.0f, 0.0f, 0.0f);
 	// float scale = grid_size;
 	vector<vec3> pos = getPosition(vec3(0,0,0), 0.2);
-	for(int i = 0; i < N.x; ++i){
+	for(int k = 0; k < N.z; ++k){
 		for(int j = 0; j < N.y; ++j){
-			for(int k = 0; k < N.z; ++k){
+			for(int i = 0; i < N.x; ++i){
 			pos = getPosition(vec3(range.x * (float)i/N.x + min.x,
 				range.y * (float)j/N.y + min.y, range.z * (float)k/N.z + min.z), grid_size*0.9);
 			color.x = (float)j/N.y;
