@@ -139,7 +139,7 @@ include_directories(
 # )
 include_directories(
 include
-include/SDL2/SDL
+# include/SDL2/SDL
 ${CMAKE_SOURCE_DIR}/lib
 ${GLEW_INCLUDE_DIRS}
 # ${catkin_INCLUDE_DIRS}
